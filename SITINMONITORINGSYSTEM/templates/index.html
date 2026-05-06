@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sit in Monitoring System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+{% if 'registered' in session %}
+<script>
+    window.onload = function() { registerModal.style.display = 'block'; }
+</script>
+{% endif %}
+
+{% if 'register_error' in session %}
+<script>
+    window.onload = function() { registerModal.style.display = 'block'; }
+</script>
+{% endif %}
+
+{% if 'login_error' in session %}
+<script>
+    window.onload = function() { loginModal.style.display = 'block'; }
+</script>
+{% endif %}
+ 
+<style>
+/* ══ LEADERBOARD SECTION ══ */
+.lb-section {
+    max-width: 900px;
+    margin: 0 auto 60px;
+    padding: 0 24px;
+}
+ 
+.lb-section-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+}
+.lb-section-sub {
+    text-align: center;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 32px;
+}
+ 
+/* Score formula pills */
+.lb-formula {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+}
+.lb-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1.5px solid;
+}
+.lb-pill-purple { background: rgba(102,126,234,0.09); color: #667eea; border-color: rgba(102,126,234,0.3); }
+.lb-pill-green  { background: rgba(17,153,142,0.09);  color: #11998e; border-color: rgba(17,153,142,0.3); }
+.lb-pill-orange { background: rgba(247,151,30,0.09);  color: #e0830a; border-color: rgba(247,151,30,0.3); }
+ 
+.lb-pill-dot { width: 8px; height: 8px; border-radius: 50%; }
+.lb-pill-purple .lb-pill-dot { background: #667eea; }
+.lb-pill-green  .lb-pill-dot { background: #11998e; }
+.lb-pill-orange .lb-pill-dot { background: #f7971e; }
+ 
+/* Top-3 podium */
+.lb-podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+.lb-podium-card {
+    background: white;
+    border-radius: 20px;
+    border: 1.5px solid #e2e8f0;
+    padding: 20px 16px 18px;
+    text-align: center;
+    transition: transform 0.25s, box-shadow 0.25s;
+    position: relative;
+    min-width: 150px;
+    max-width: 200px;
+    flex: 1;
+}
+.lb-podium-card:hover { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(0,0,0,0.1); }
+.lb-podium-card.rank-1 { border-color: #ffd200; background: linear-gradient(180deg,#fffdf0,#fff); padding-bottom: 22px; transform: translateY(-12px); }
+.lb-podium-card.rank-2 { border-color: #d0d0d0; background: linear-gradient(180deg,#f9f9f9,#fff); }
+.lb-podium-card.rank-3 { border-color: #cd7f32; background: linear-gradient(180deg,#fdf6f0,#fff); }
+ 
+.lb-crown { font-size: 26px; margin-bottom: 6px; display: block; }
+.lb-podium-avatar {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800; color: white;
+    overflow: hidden; flex-shrink: 0;
+    border: 3px solid;
+}
+.rank-1 .lb-podium-avatar { border-color: #ffd200; }
+.rank-2 .lb-podium-avatar { border-color: #c0c0c0; }
+.rank-3 .lb-podium-avatar { border-color: #cd7f32; }
+ 
+.lb-podium-name  { font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 4px; }
+.lb-podium-course { font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 8px; }
+.lb-podium-score { font-size: 20px; font-weight: 800; color: #667eea; }
+.lb-podium-score-label { font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.lb-rank-badge {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    padding: 3px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 800;
+}
+.rank-1 .lb-rank-badge { background: #ffd200; color: #7a5e00; }
+.rank-2 .lb-rank-badge { background: #e0e0e0; color: #555; }
+.rank-3 .lb-rank-badge { background: #cd7f32; color: white; }
+ 
+/* Rest of the list */
+.lb-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 18px;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    transition: all 0.2s;
+}
+.lb-row:hover { border-color: rgba(102,126,234,0.35); transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+ 
+.lb-row-rank { font-size: 15px; font-weight: 800; color: #94a3b8; width: 24px; text-align: center; flex-shrink: 0; }
+.lb-row-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: white;
+    overflow: hidden; flex-shrink: 0;
+}
+.lb-row-info { flex: 1; min-width: 0; }
+.lb-row-name   { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-row-course { font-size: 11px; color: #94a3b8; font-weight: 600; }
+.lb-row-stats  { display: flex; gap: 14px; align-items: center; flex-shrink: 0; }
+.lb-stat-chip {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 4px 10px; background: #f8faff;
+    border: 1px solid rgba(102,126,234,0.12); border-radius: 8px;
+}
+.lb-stat-chip-val   { font-size: 14px; font-weight: 800; color: #667eea; line-height: 1; }
+.lb-stat-chip-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+.lb-row-score { font-size: 18px; font-weight: 800; color: #0f172a; min-width: 56px; text-align: right; }
+ 
+.lb-empty {
+    text-align: center; padding: 52px 20px;
+    background: white; border: 1.5px dashed #e2e8f0; border-radius: 18px;
+    color: #94a3b8;
+}
+.lb-empty-icon { font-size: 2.5rem; opacity: 0.25; margin-bottom: 12px; }
+.lb-loading { text-align: center; padding: 40px; color: #94a3b8; }
+ 
+@media (max-width: 600px) {
+    .lb-podium { flex-direction: column; align-items: center; }
+    .lb-podium-card { max-width: 100%; width: 100%; transform: none !important; }
+    .lb-row-stats { display: none; }
+    .lb-row-score { font-size: 15px; }
+}
+</style>
+
+<body>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+            <p class="flash" id="flashMsg">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="navbar">
+        <div class="logo">SIT-IN MONITOR</div>
+        <div class="nav-links">
+            <a href="#" id="loginBtn">Login</a>
+            <a href="#" id="registerBtn">Register</a>
+            <a href="/about">About</a>
+        </div>
+    </div>
+
+    <div class="content">
+        <h1>Welcome to the Sit in Monitoring System</h1>
+        <p class="subtitle">Track, monitor, and manage student attendance with precision</p>
+
+        <div class="logo-showcase">
+            <div class="logo-card">
+                <img src="{{ url_for('static', filename='uclogo.png') }}" alt="UC Logo">
+            </div>
+            <div class="logo-card">
+                <img src="{{ url_for('static', filename='ucmainccslogo.png') }}" alt="UC MNCCS Logo">
+            </div>
+        </div>
+    </div>
+<!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Student Login</h2>
+                <span class="close" id="closeLoginModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form action="/login" method="POST" autocomplete="off">
+                    <div class="form-group">
+                        <label>ID Number *</label>
+                        <input type="text" name="idNumber" placeholder="Enter your ID number" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" placeholder="Enter your password" autocomplete="new-password" required>
+                    </div>
+                    <div class="remember-forgot">
+                        <label>
+                            <input type="checkbox" name="rememberMe">
+                            Remember me
+                        </label>
+                        <a href="#">Forgot password?</a>
+                    </div>
+                    <button type="submit" class="btn-register">Login</button>
+                    <p class="modal-link">
+                        Don't have an account?
+                        <a href="#" id="switchToRegister">Register here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+  <!-- ══ LEADERBOARD HTML ══ -->
+<div class="lb-section">
+    <!-- Title -->
+    <div class="lb-section-title">🏆 Student Leaderboard</div>
+    <div class="lb-section-sub">Top students ranked by cleanliness, hours, and task completion</div>
+ 
+    <!-- Formula pills -->
+    <div class="lb-formula">
+        <div class="lb-pill lb-pill-purple"><div class="lb-pill-dot"></div>Clean Workstation — 50%</div>
+        <div class="lb-pill lb-pill-orange"><div class="lb-pill-dot"></div>Total Hours — 30%</div>
+        <div class="lb-pill lb-pill-green"><div class="lb-pill-dot"></div>Sessions Done — 20%</div>
+    </div>
+ 
+    <!-- Top 3 podium -->
+    <div class="lb-podium" id="lbPodium">
+        <div class="lb-loading">Loading leaderboard…</div>
+    </div>
+ 
+    <!-- Ranks 4–10 -->
+    <div class="lb-list" id="lbList"></div>
+</div>
+
+<!-- Registration Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Student Registration</h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form action="/register" method="POST">
+
+                    <div class="form-group">
+                        <label>ID Number *</label>
+                        <input type="text" name="idNumber" placeholder="Enter your ID number" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Course *</label>
+                        <select name="course" required>
+                            <option value="">Select your course</option>
+
+                            <optgroup label="💻 College of Computer Studies (30 sit-ins)">
+                                <option value="BSIT">BS Information Technology</option>
+                                <option value="BSCS">BS Computer Science</option>
+                            </optgroup>
+
+                            <optgroup label="💼 College of Business and Accountancy (15 sit-ins)">
+                                <option value="BSA">BS Accountancy</option>
+                                <option value="BSBA-FM">BSBA - Financial Management</option>
+                                <option value="BSBA-MM">BSBA - Marketing Management</option>
+                                <option value="BSBA-HRM">BSBA - Human Resource Management</option>
+                                <option value="BSBA-OM">BSBA - Operations Management</option>
+                                <option value="BSMA">BS Management Accounting</option>
+                                <option value="BSEntrepreneurship">BS Entrepreneurship</option>
+                            </optgroup>
+
+                            <optgroup label="⚙️ College of Engineering (15 sit-ins)">
+                                <option value="BSCE">BS Civil Engineering</option>
+                                <option value="BSEE">BS Electrical Engineering</option>
+                                <option value="BSME">BS Mechanical Engineering</option>
+                                <option value="BSIE">BS Industrial Engineering</option>
+                                <option value="BSEcE">BS Electronics Engineering</option>
+                            </optgroup>
+
+                            <optgroup label="📚 College of Education (15 sit-ins)">
+                                <option value="BEEd">Bachelor of Elementary Education</option>
+                                <option value="BSED-ENG">BSED - English</option>
+                                <option value="BSED-MATH">BSED - Mathematics</option>
+                                <option value="BSED-SCI">BSED - Science</option>
+                                <option value="BSED-FIL">BSED - Filipino</option>
+                                <option value="BSED-SS">BSED - Social Studies</option>
+                                <option value="BSPE">BS Physical Education</option>
+                            </optgroup>
+
+                            <optgroup label="🏥 College of Nursing (15 sit-ins)">
+                                <option value="BSN">BS Nursing</option>
+                            </optgroup>
+
+                            <optgroup label="🎨 College of Arts and Sciences (15 sit-ins)">
+                                <option value="ABCOM">AB Communication</option>
+                                <option value="ABPOLSCI">AB Political Science</option>
+                                <option value="BSPSY">BS Psychology</option>
+                                <option value="BSBIO">BS Biology</option>
+                                <option value="BSMATH">BS Mathematics</option>
+                            </optgroup>
+
+                            <optgroup label="🏛️ College of Architecture and Fine Arts (15 sit-ins)">
+                                <option value="BSARCH">BS Architecture</option>
+                                <option value="BSID">BS Interior Design</option>
+                                <option value="BFA">BS Fine Arts</option>
+                            </optgroup>
+
+                            <optgroup label="🏨 College of Tourism and Hospitality Management (15 sit-ins)">
+                                <option value="BSTM">BS Tourism Management</option>
+                                <option value="BSHM">BS Hospitality Management</option>
+                            </optgroup>
+
+                            <optgroup label="⚖️ College of Criminal Justice Education (15 sit-ins)">
+                                <option value="BSCrim">BS Criminology</option>
+                            </optgroup>
+
+                            <optgroup label="💊 College of Pharmacy (15 sit-ins)">
+                                <option value="BSPharm">BS Pharmacy</option>
+                            </optgroup>
+
+                            <optgroup label="⚓ College of Maritime Education (15 sit-ins)">
+                                <option value="BSMARE">BS Marine Engineering</option>
+                                <option value="BSMART">BS Marine Transportation</option>
+                            </optgroup>
+
+                            <optgroup label="💉 College of Allied Medical Sciences (15 sit-ins)">
+                                <option value="BSMT">BS Medical Technology</option>
+                                <option value="BSRT">BS Radiologic Technology</option>
+                                <option value="BSOT">BS Occupational Therapy</option>
+                                <option value="BSPT">BS Physical Therapy</option>
+                            </optgroup>
+
+                            <optgroup label="📜 College of Law (15 sit-ins)">
+                                <option value="JD">Juris Doctor</option>
+                            </optgroup>
+
+                            <optgroup label="🎓 Senior High School (15 sit-ins)">
+                                <option value="SHS-STEM">SHS - STEM</option>
+                                <option value="SHS-ABM">SHS - ABM</option>
+                                <option value="SHS-HUMSS">SHS - HUMSS</option>
+                                <option value="SHS-TVL">SHS - TVL</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Course Level *</label>
+                        <select name="courseLevel" required>
+                            <option value="">Select level</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <input type="text" name="lastName" placeholder="Last name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <input type="text" name="firstName" placeholder="First name" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" placeholder="example@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Address *</label>
+                        <input type="text" name="address" placeholder="Complete address" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Password *</label>
+                            <input type="password" name="password" placeholder="Enter password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Confirm Password *</label>
+                            <input type="password" name="confirmPassword" placeholder="Re-enter password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-register">Register</button>
+
+                    <p class="modal-link">
+                        Already have an account?
+                        <a href="#" id="switchToLogin">Login here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+ 
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+(function loadLeaderboard() {
+    fetch('/api/leaderboard')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var podium = document.getElementById('lbPodium');
+            var list   = document.getElementById('lbList');
+            podium.innerHTML = '';
+            list.innerHTML   = '';
+ 
+            if (!data || !data.length) {
+                podium.innerHTML = '<div class="lb-empty"><div class="lb-empty-icon">🏆</div><strong style="font-size:15px;color:#0f172a;">No data yet</strong><p style="font-size:13px;margin-top:6px;line-height:1.6;">Complete sit-in sessions to appear on the leaderboard.</p></div>';
+                return;
+            }
+ 
+            var GRAD = [
+                'linear-gradient(135deg,#ffd200,#f7971e)',
+                'linear-gradient(135deg,#b0bec5,#90a4ae)',
+                'linear-gradient(135deg,#cd7f32,#a0522d)'
+            ];
+            var CROWNS = ['👑', '🥈', '🥉'];
+            var RANK_LABELS = ['1st', '2nd', '3rd'];
+            var RANK_CLASSES = ['rank-1', 'rank-2', 'rank-3'];
+ 
+            /* ── TOP 3 PODIUM ── reorder: 2nd, 1st, 3rd for visual podium effect */
+            var top3 = data.slice(0, 3);
+            var podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+            podiumOrder.forEach(function(p) {
+                var origIdx = data.indexOf(p);
+                var rankCls = RANK_CLASSES[origIdx] || '';
+                var crown   = CROWNS[origIdx]  || '';
+                var rankLbl = RANK_LABELS[origIdx] || (origIdx + 1);
+                var grad    = GRAD[origIdx] || 'linear-gradient(135deg,#667eea,#764ba2)';
+                var initials = p.name.split(' ').map(function(w){ return w[0]||''; }).join('').substring(0,2).toUpperCase();
+                var avatarHtml = p.profilePic
+                    ? '<img src="' + p.profilePic + '" style="width:100%;height:100%;object-fit:cover;" alt="">'
+                    : initials;
+                var hours = Math.round(p.totalMinutes / 60 * 10) / 10;
+ 
+                var card = document.createElement('div');
+                card.className = 'lb-podium-card ' + rankCls;
+                card.innerHTML =
+                    '<div class="lb-rank-badge">' + rankLbl + '</div>'
+                  + '<span class="lb-crown">' + crown + '</span>'
+                  + '<div class="lb-podium-avatar" style="background:' + grad + ';">' + avatarHtml + '</div>'
+                  + '<div class="lb-podium-name">' + escHtml(p.name) + '</div>'
+                  + '<div class="lb-podium-course">' + escHtml(p.course) + ' · ' + escHtml(p.courseLevel) + '</div>'
+                  + '<div class="lb-podium-score">' + Math.round(p.score) + '</div>'
+                  + '<div class="lb-podium-score-label">Score</div>'
+                  + '<div style="margin-top:10px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">'
+                  + '  <div style="font-size:11px;font-weight:700;color:#667eea;background:rgba(102,126,234,0.08);padding:2px 9px;border-radius:20px;">🎯 ' + p.bonusPoints + ' pts</div>'
+                  + '  <div style="font-size:11px;font-weight:700;color:#11998e;background:rgba(17,153,142,0.08);padding:2px 9px;border-radius:20px;">⏱ ' + hours + 'h</div>'
+                  + '</div>';
+                podium.appendChild(card);
+            });
+ 
+            /* ── RANKS 4–10 ── */
+            data.slice(3).forEach(function(p, i) {
+                var rank     = i + 4;
+                var hours    = Math.round(p.totalMinutes / 60 * 10) / 10;
+                var initials = p.name.split(' ').map(function(w){ return w[0]||''; }).join('').substring(0,2).toUpperCase();
+                var avatarHtml = p.profilePic
+                    ? '<img src="' + p.profilePic + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">'
+                    : initials;
+ 
+                var row = document.createElement('div');
+                row.className = 'lb-row';
+                row.innerHTML =
+                    '<div class="lb-row-rank">' + rank + '</div>'
+                  + '<div class="lb-row-avatar">' + avatarHtml + '</div>'
+                  + '<div class="lb-row-info">'
+                  +   '<div class="lb-row-name">' + escHtml(p.name) + '</div>'
+                  +   '<div class="lb-row-course">' + escHtml(p.course) + ' · ' + escHtml(p.courseLevel) + '</div>'
+                  + '</div>'
+                  + '<div class="lb-row-stats">'
+                  +   '<div class="lb-stat-chip"><div class="lb-stat-chip-val">🎯 ' + p.bonusPoints + '</div><div class="lb-stat-chip-label">pts</div></div>'
+                  +   '<div class="lb-stat-chip"><div class="lb-stat-chip-val">⏱ ' + hours + 'h</div><div class="lb-stat-chip-label">hours</div></div>'
+                  +   '<div class="lb-stat-chip"><div class="lb-stat-chip-val">💼 ' + p.totalSessions + '</div><div class="lb-stat-chip-label">sessions</div></div>'
+                  + '</div>'
+                  + '<div class="lb-row-score">' + Math.round(p.score) + '</div>';
+                list.appendChild(row);
+            });
+ 
+            if (data.length === 0) {
+                list.innerHTML = '<div class="lb-empty"><div class="lb-empty-icon">🏆</div>No data yet.</div>';
+            }
+        })
+        .catch(function(err) {
+            console.error('Leaderboard error:', err);
+            document.getElementById('lbPodium').innerHTML = '<div class="lb-empty"><div class="lb-empty-icon">⚠️</div><strong style="font-size:14px;color:#0f172a;">Could not load leaderboard</strong></div>';
+        });
+ 
+    function escHtml(str) {
+        return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+})();
+</script>
+</body>
+</html>

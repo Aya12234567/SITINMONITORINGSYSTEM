@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About — Sit-in Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">SIT-IN MONITOR</div>
+        <div class="nav-links">
+            <a href="/" class="nav-home">Home</a>
+            <a href="/about" class="nav-about">About</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="hero-content">
+            <div class="hero-tag">// About the System</div>
+            <h1>Built for <span>Smarter</span><br>Student Monitoring</h1>
+            <p>The Sit-in Monitoring System is a purpose-built platform for the University of Cebu — College of Computer Studies, designed to streamline lab attendance tracking for students and administrators alike.</p>
+            <a href="#system" class="hero-btn">Explore ↓</a>
+        </div>
+    </section>
+
+    <!-- ABOUT THE SYSTEM -->
+    <section class="section reveal" id="system">
+        <div class="section-label">// The System</div>
+        <div class="about-text">
+            <h3>What is the Sit-in Monitoring System?</h3>
+            <p>The Sit-in Monitoring System is a web-based application designed to manage and track student sit-in sessions in the CCS computer laboratories. It replaces manual logbooks with a fast, reliable digital solution.</p>
+            <p>Administrators can monitor active sessions, view attendance history, and manage student records — all from a single dashboard. Students simply register once and log in to check in to any available lab.</p>
+            <p>Built with Flask and SQLite, it is lightweight, fast, and runs entirely on the university's local network infrastructure.</p>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- SCHOOL SECTION -->
+    <section class="section reveal">
+        <div class="section-label">// The Institution</div>
+        <div class="section-title">University of Cebu —<br><span>College of Computer Studies</span></div>
+        <p class="section-sub">This system was developed as part of an academic project under the CCS department, serving the needs of students and faculty in the computer laboratories.</p>
+        <div class="school-cards">
+            <div class="school-card">
+                <div class="school-badge">UC MAIN</div>
+                <h3>University of Cebu</h3>
+                <p>A leading institution in Cebu City offering quality education across multiple disciplines. UC is committed to academic excellence, innovation, and the holistic development of its students.</p>
+            </div>
+            <div class="school-card">
+                <div class="school-badge">CCS DEPT</div>
+                <h3>College of Computer Studies</h3>
+                <p>The CCS department offers programs in BS Computer Science, BS Information Technology, BS Information Systems, and Associate in Computer Technology — shaping the next generation of tech professionals.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- HOW TO USE -->
+    <section class="section reveal">
+        <div class="section-label">// How It Works</div>
+        <div class="section-title">Using the System<br><span>Step by Step</span></div>
+        <p class="section-sub">Getting started is simple. Follow these steps to access the Sit-in Monitoring System as a student.</p>
+        <div class="steps">
+            <div class="step-card">
+                <div class="step-num">01</div>
+                <div class="step-icon">📝</div>
+                <h4>Register</h4>
+                <p>Create your account using your student ID number, name, course, year level, and a secure password. Registration is a one-time process.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">02</div>
+                <div class="step-icon">🔑</div>
+                <h4>Log In</h4>
+                <p>Enter your registered ID number and password to securely access your personal dashboard on any device connected to the network.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">03</div>
+                <div class="step-icon">🖥️</div>
+                <h4>Check In</h4>
+                <p>Once logged in, initiate a sit-in session in the available laboratory. Your session will be recorded automatically.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">04</div>
+                <div class="step-icon">📋</div>
+                <h4>Track History</h4>
+                <p>View your past sit-in sessions, remaining session allowance, and attendance records from your dashboard anytime.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- DEVELOPER -->
+    <section class="section reveal">
+        <div class="section-label">// The Developer</div>
+        <div class="section-title" style="text-align:center; margin-bottom: 44px;">Meet the <span>Developer</span></div>
+        <div class="dev-card">
+            <div class="dev-avatar">👨‍💻</div>
+            <div class="dev-info">
+                <h3>Lemuel Alonso</h3>
+                <div class="dev-role">// FULL-STACK DEVELOPER · 3RD YEAR BSIT</div>
+                <p>A 3rd year BS Information Technology student at the University of Cebu, passionate about building practical web solutions. This system was developed as an academic project to address real needs in the CCS laboratory environment.</p>
+                <div class="dev-tags">
+                    <span class="dev-tag">Python</span>
+                    <span class="dev-tag">Flask</span>
+                    <span class="dev-tag">SQLite</span>
+                    <span class="dev-tag">HTML / CSS</span>
+                    <span class="dev-tag">JavaScript</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>© 2026 <strong>Sit-in Monitoring System</strong> · University of Cebu, College of Computer Studies</p>
+        <p style="margin-top:6px;">Developed by Lemuel Alonso · All rights reserved</p>
+    </footer>
+
+    <script>
+        var reveals = document.querySelectorAll('.reveal');
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, { threshold: 0.08 });
+        reveals.forEach(function(el) { observer.observe(el); });
+    </script>
+
+</body>
+</html>

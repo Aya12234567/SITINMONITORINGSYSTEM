@@ -1,0 +1,2519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Sit-in Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* ══ HISTORY MODAL STYLES ══ */
+        .hmodal {
+            display: none;
+            position: fixed;
+            z-index: 3000;
+            inset: 0;
+            background: rgba(15,23,42,0.65);
+            backdrop-filter: blur(6px);
+            overflow-y: auto;
+            padding: 20px;
+            animation: hFadeIn 0.25s ease;
+        }
+        @keyframes hFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes hSlideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hmodal-box {
+            background: #fff;
+            margin: 30px auto;
+            border-radius: 22px;
+            width: 96%;
+            max-width: 1000px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+            animation: hSlideUp 0.35s cubic-bezier(0.4,0,0.2,1);
+            overflow: hidden;
+        }
+
+        .hmodal-head {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 24px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .hmodal-head h3 { font-size: 20px; font-weight: 800; margin: 0; }
+        .hmodal-head p  { font-size: 12px; opacity: 0.78; margin: 3px 0 0; }
+
+        .hmodal-close {
+            background: rgba(255,255,255,0.2);
+            border: none; color: #fff;
+            font-size: 20px; width: 34px; height: 34px;
+            border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; flex-shrink: 0;
+        }
+        .hmodal-close:hover { background: rgba(255,255,255,0.38); transform: rotate(90deg); }
+
+        .hmodal-body { padding: 24px 28px 32px; }
+
+        .h-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .h-entries-label { font-size: 13px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+        .h-entries-select {
+            border: 1.5px solid #e2e8f0; border-radius: 8px;
+            padding: 5px 10px; font-size: 13px;
+            font-family: 'Poppins', sans-serif; color: #0f172a;
+            background: white; cursor: pointer; outline: none;
+        }
+        .h-search-input {
+            margin-left: auto;
+            padding: 8px 14px;
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            font-size: 13px; font-family: 'Poppins', sans-serif;
+            color: #0f172a; width: 210px; outline: none;
+            transition: all 0.2s;
+        }
+        .h-search-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+
+        .h-table-wrap { border: 1.5px solid #e2e8f0; border-radius: 14px; overflow: hidden; }
+        .h-table-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+
+        .h-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .h-table thead tr {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            position: sticky; top: 0; z-index: 2;
+        }
+        .h-table th {
+            padding: 13px 14px; text-align: left;
+            color: #fff; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.7px;
+            white-space: nowrap; cursor: pointer; user-select: none;
+        }
+        .h-table td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-weight: 500; }
+        .h-table tbody tr:last-child td { border-bottom: none; }
+        .h-table tbody tr:hover td { background: #f0f4ff; }
+
+        .h-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .h-badge-purpose { background: rgba(102,126,234,0.1); color: #5468d4; }
+        .h-badge-lab     { background: rgba(17,153,142,0.1);  color: #11998e; }
+
+        .btn-feedback {
+            padding: 5px 14px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: #fff; border: none; border-radius: 8px;
+            font-size: 11px; font-weight: 700;
+            cursor: pointer; font-family: 'Poppins', sans-serif;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-feedback:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(17,153,142,0.4); }
+        .btn-feedback:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .h-pagination-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; flex-wrap: wrap; gap: 10px; }
+        .h-showing { font-size: 12px; color: #64748b; font-weight: 600; }
+        .h-pages   { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+        .h-page-btn {
+            padding: 6px 12px; border-radius: 8px;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer; font-family: 'Poppins', sans-serif;
+            transition: all 0.15s; border: 1.5px solid #e2e8f0;
+            background: white; color: #0f172a;
+        }
+        .h-page-btn:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+        .h-page-btn.active { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; border-color: transparent; }
+        .h-page-btn:disabled { opacity: 0.4; cursor: default; }
+
+        .fb-modal {
+            display: none; position: fixed; z-index: 4500;
+            inset: 0; background: rgba(15,23,42,0.7);
+            backdrop-filter: blur(8px); padding: 20px;
+            animation: hFadeIn 0.2s ease;
+        }
+        .fb-modal-box {
+            background: #fff; margin: 80px auto;
+            border-radius: 20px; width: 92%; max-width: 480px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.22);
+            animation: hSlideUp 0.3s cubic-bezier(0.4,0,0.2,1); overflow: hidden;
+        }
+        .fb-modal-head {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: #fff; padding: 22px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .fb-modal-head h3 { font-size: 18px; font-weight: 800; margin: 0; }
+        .fb-modal-head p  { font-size: 12px; opacity: 0.82; margin: 3px 0 0; }
+        .fb-modal-close {
+            background: rgba(255,255,255,0.22); border: none; color: #fff;
+            font-size: 18px; width: 32px; height: 32px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .fb-modal-close:hover { background: rgba(255,255,255,0.38); transform: rotate(90deg); }
+        .fb-modal-body { padding: 24px 28px 28px; }
+        .fb-session-info {
+            background: #f8faff; border: 1.5px solid rgba(102,126,234,0.18);
+            border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+            font-size: 13px; color: #334155; line-height: 1.7;
+        }
+        .fb-session-info strong { color: #667eea; }
+        .fb-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: #64748b; margin-bottom: 7px; }
+        .fb-textarea {
+            width: 100%; min-height: 110px;
+            padding: 12px 14px; border: 2px solid #e2e8f0;
+            border-radius: 12px; font-family: 'Poppins', sans-serif;
+            font-size: 13px; color: #0f172a; resize: vertical; outline: none;
+            transition: all 0.2s; box-sizing: border-box;
+        }
+        .fb-textarea:focus { border-color: #11998e; box-shadow: 0 0 0 3px rgba(17,153,142,0.12); }
+        .fb-submit-btn {
+            margin-top: 14px; width: 100%; padding: 12px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: #fff; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            font-family: 'Poppins', sans-serif; transition: all 0.2s;
+        }
+        .fb-submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(17,153,142,0.35); }
+        .fb-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .toast {
+            position: fixed; top: 24px; left: 50%;
+            transform: translateX(-50%) translateY(-16px);
+            padding: 13px 28px; border-radius: 10px;
+            font-size: 14px; font-weight: 600;
+            z-index: 9999; opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            font-family: 'Poppins', sans-serif;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast-success { background: #22c55e; color: white; }
+        .toast-error   { background: #ef4444; color: white; }
+
+        .h-empty { text-align: center; padding: 48px 24px; color: #94a3b8; }
+        .h-empty-icon { font-size: 2.8rem; opacity: 0.2; margin-bottom: 12px; }
+
+        /* ══ RESERVATION WIZARD STYLES ══ */
+        .rsv-modal {
+            display: none;
+            position: fixed;
+            z-index: 3500;
+            inset: 0;
+            background: rgba(15,23,42,0.7);
+            backdrop-filter: blur(8px);
+            overflow-y: auto;
+            padding: 20px;
+            animation: rsvFadeIn 0.25s ease;
+        }
+        @keyframes rsvFadeIn  { from { opacity:0; } to { opacity:1; } }
+        @keyframes rsvSlideUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+
+        .rsv-box {
+            background: #fff;
+            margin: 20px auto;
+            border-radius: 24px;
+            width: 96%;
+            max-width: 900px;
+            box-shadow: 0 28px 70px rgba(0,0,0,0.2);
+            animation: rsvSlideUp 0.35s cubic-bezier(0.4,0,0.2,1);
+            overflow: hidden;
+        }
+
+        .rsv-head {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 24px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .rsv-head-title { font-size: 20px; font-weight: 800; }
+        .rsv-head-sub   { font-size: 12px; opacity: 0.75; margin-top: 3px; }
+        .rsv-close {
+            background: rgba(255,255,255,0.2);
+            border: none; color: #fff;
+            font-size: 20px; width: 34px; height: 34px;
+            border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .rsv-close:hover { background: rgba(255,255,255,0.38); transform: rotate(90deg); }
+
+        .rsv-stepper {
+            display: flex;
+            align-items: center;
+            padding: 20px 24px 0;
+            gap: 0;
+            background: #fafbff;
+            border-bottom: 2px solid #f1f5f9;
+            overflow-x: auto;
+        }
+        .rsv-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            padding-bottom: 16px;
+            position: relative;
+            min-width: 80px;
+        }
+        .rsv-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 17px;
+            left: 100px;
+            right: 0;
+            height: 2px;
+            background: #e2e8f0;
+        }
+        .rsv-step.done::after   { background: linear-gradient(90deg,#667eea,#764ba2); }
+        .rsv-step-num {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 800;
+            background: #e2e8f0; color: #94a3b8;
+            flex-shrink: 0; transition: all 0.3s; z-index: 1;
+        }
+        .rsv-step.active .rsv-step-num {
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            color: #fff; box-shadow: 0 4px 14px rgba(102,126,234,0.45);
+        }
+        .rsv-step.done .rsv-step-num { background: linear-gradient(135deg,#11998e,#38ef7d); color: #fff; }
+        .rsv-step-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        .rsv-step.active .rsv-step-label { color: #667eea; }
+        .rsv-step.done   .rsv-step-label { color: #11998e; }
+
+        .rsv-body { padding: 28px 32px 32px; }
+        .rsv-panel { display: none; }
+        .rsv-panel.active { display: block; animation: rsvSlideUp 0.3s ease; }
+
+        .rsv-section-label {
+            font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            color: #64748b; margin-bottom: 14px;
+        }
+
+        /* Lab search button */
+        .rsv-search-labs-btn {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            width: 100%; padding: 18px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff; border: none; border-radius: 16px;
+            font-size: 15px; font-weight: 800; cursor: pointer;
+            font-family: 'Poppins', sans-serif; transition: all 0.3s;
+            margin-bottom: 24px; box-shadow: 0 8px 24px rgba(102,126,234,0.35);
+        }
+        .rsv-search-labs-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(102,126,234,0.5); }
+        .rsv-search-labs-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .rsv-search-labs-btn .btn-icon { font-size: 1.3rem; }
+
+        /* Lab loading */
+        .rsv-lab-loading { display: none; text-align: center; padding: 40px 20px; }
+        .rsv-lab-loading-inner { display: inline-flex; flex-direction: column; align-items: center; gap: 20px; }
+        .rsv-ring-loader { position: relative; width: 72px; height: 72px; }
+        .rsv-ring-loader .ring {
+            position: absolute; inset: 0; border-radius: 50%;
+            border: 4px solid transparent; animation: rsvRingRotate 1.2s linear infinite;
+        }
+        .rsv-ring-loader .ring:nth-child(1) { border-top-color: #667eea; animation-duration: 1.2s; }
+        .rsv-ring-loader .ring:nth-child(2) { border-right-color: #764ba2; animation-duration: 1.8s; animation-direction: reverse; inset: 8px; }
+        .rsv-ring-loader .ring:nth-child(3) { border-bottom-color: #f093fb; animation-duration: 2.4s; inset: 16px; }
+        @keyframes rsvRingRotate { to { transform: rotate(360deg); } }
+
+        .rsv-loading-dots { display: flex; gap: 8px; align-items: center; }
+        .rsv-loading-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #667eea;
+            animation: rsvDotBounce 1.2s ease-in-out infinite;
+        }
+        .rsv-loading-dot:nth-child(2) { background: #764ba2; animation-delay: 0.2s; }
+        .rsv-loading-dot:nth-child(3) { background: #f093fb; animation-delay: 0.4s; }
+        @keyframes rsvDotBounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40%            { transform: scale(1.2); opacity: 1; }
+        }
+        .rsv-loading-msg { font-size: 14px; font-weight: 700; color: #667eea; min-height: 22px; transition: opacity 0.3s; }
+        .rsv-loading-sub { font-size: 12px; color: #94a3b8; font-weight: 600; }
+
+        .rsv-progress-bar-wrap { width: 200px; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+        .rsv-progress-bar-fill {
+            height: 100%; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+            border-radius: 10px; width: 0%; transition: width 0.3s ease;
+            background-size: 200% 100%; animation: rsvProgressShimmer 1.5s linear infinite;
+        }
+        @keyframes rsvProgressShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Lab grid */
+        .rsv-lab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .rsv-lab-card {
+            border: 2px solid #e2e8f0; border-radius: 14px; padding: 20px 12px;
+            text-align: center; cursor: pointer; transition: all 0.2s; background: #fafbff;
+            animation: rsvCardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        .rsv-lab-card:hover { border-color: #667eea; background: rgba(102,126,234,0.04); transform: translateY(-2px); }
+        .rsv-lab-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg,rgba(102,126,234,0.1),rgba(118,75,162,0.1));
+            box-shadow: 0 4px 16px rgba(102,126,234,0.25);
+        }
+        @keyframes rsvCardPop {
+            from { opacity: 0; transform: translateY(16px) scale(0.9); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .rsv-lab-card:nth-child(1) { animation-delay: 0.05s; }
+        .rsv-lab-card:nth-child(2) { animation-delay: 0.12s; }
+        .rsv-lab-card:nth-child(3) { animation-delay: 0.19s; }
+        .rsv-lab-card:nth-child(4) { animation-delay: 0.26s; }
+        .rsv-lab-card:nth-child(5) { animation-delay: 0.33s; }
+        .rsv-lab-card:nth-child(6) { animation-delay: 0.40s; }
+
+        .rsv-lab-icon { font-size: 2rem; margin-bottom: 8px; }
+        .rsv-lab-name { font-size: 15px; font-weight: 800; color: #0f172a; }
+        .rsv-lab-sub  { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+        .rsv-lab-avail-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            margin-top: 6px; padding: 2px 8px;
+            background: rgba(17,153,142,0.12); color: #11998e;
+            border-radius: 20px; font-size: 10px; font-weight: 700;
+        }
+        .rsv-lab-avail-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: #11998e;
+            animation: rsvPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes rsvPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.7); } }
+
+        /* Date input */
+        .rsv-date-input {
+            padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px;
+            font-size: 14px; font-family: 'Poppins', sans-serif;
+            color: #0f172a; outline: none; transition: all 0.2s; min-width: 200px;
+        }
+        .rsv-date-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+
+        /* Slot loading */
+        .rsv-slot-loading-wrap { display: none; padding: 40px 20px; text-align: center; }
+        .rsv-slot-scanner {
+            position: relative; width: 260px; height: 130px; margin: 0 auto 20px;
+            border: 2px solid rgba(102,126,234,0.25); border-radius: 14px; overflow: hidden;
+            background: linear-gradient(135deg, #f8faff, #f0f4ff);
+        }
+        .rsv-slot-scanner-line {
+            position: absolute; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
+            animation: rsvScanLine 1.5s ease-in-out infinite; top: 0;
+            box-shadow: 0 0 12px rgba(102,126,234,0.6);
+        }
+        @keyframes rsvScanLine { 0% { top: 0; } 50% { top: calc(100% - 3px); } 100% { top: 0; } }
+        .rsv-slot-scanner-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 14px; opacity: 0.3; }
+        .rsv-slot-scanner-cell {
+            height: 22px; border-radius: 6px; background: #667eea;
+            animation: rsvCellFlicker 2s ease-in-out infinite;
+        }
+        .rsv-slot-scanner-cell:nth-child(odd)  { animation-delay: 0.3s; background: #764ba2; }
+        .rsv-slot-scanner-cell:nth-child(3n)   { animation-delay: 0.6s; background: #f093fb; }
+        @keyframes rsvCellFlicker { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+        .rsv-slot-loading-msg { font-size: 14px; font-weight: 700; color: #667eea; min-height: 22px; margin-bottom: 6px; }
+        .rsv-slot-loading-sub { font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 16px; }
+
+        /* Slot grid */
+        .rsv-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .rsv-slot-card {
+            border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 12px;
+            cursor: pointer; transition: all 0.2s; background: #fafbff; text-align: center;
+            animation: rsvCardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        .rsv-slot-card:hover:not(.rsv-slot-full) { border-color: #667eea; background: rgba(102,126,234,0.04); transform: translateY(-1px); }
+        .rsv-slot-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg,rgba(102,126,234,0.1),rgba(118,75,162,0.1));
+            box-shadow: 0 4px 14px rgba(102,126,234,0.2);
+        }
+        .rsv-slot-card.rsv-slot-full { opacity: 0.5; cursor: not-allowed; border-color: #f1f5f9; background: #f8fafc; }
+        .rsv-slot-time      { font-size: 13px; font-weight: 700; color: #0f172a; }
+        .rsv-slot-avail     { font-size: 11px; color: #11998e; font-weight: 700; margin-top: 4px; }
+        .rsv-slot-full-label{ font-size: 11px; color: #f5576c; font-weight: 700; margin-top: 4px; }
+
+        /* PC grid */
+        .rsv-pc-legend { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+        .rsv-legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #334155; }
+        .rsv-legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+        .rsv-legend-dot.available  { background: linear-gradient(135deg,#11998e,#38ef7d); }
+        .rsv-legend-dot.reserved   { background: linear-gradient(135deg,#f7971e,#ffd200); }
+        .rsv-legend-dot.maintenance{ background: linear-gradient(135deg,#f5576c,#f093fb); }
+        .rsv-legend-dot.selected   { background: linear-gradient(135deg,#667eea,#764ba2); }
+
+        .rsv-pc-container {
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;
+            margin-bottom: 20px; padding: 16px;
+            background: #f8faff; border: 1.5px solid rgba(102,126,234,0.15); border-radius: 16px;
+        }
+        .rsv-pc {
+            aspect-ratio: 1; border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.15s; min-height: 48px;
+        }
+        .rsv-pc.available {
+            background: linear-gradient(135deg, rgba(17,153,142,0.12), rgba(56,239,125,0.12));
+            border: 2px solid rgba(17,153,142,0.35); color: #11998e;
+        }
+        .rsv-pc.available:hover {
+            background: linear-gradient(135deg,#11998e,#38ef7d);
+            color: #fff; border-color: transparent;
+            transform: scale(1.08); box-shadow: 0 4px 12px rgba(17,153,142,0.4);
+        }
+        .rsv-pc.reserved {
+            background: linear-gradient(135deg, rgba(247,151,30,0.12), rgba(255,210,0,0.12));
+            border: 2px solid rgba(247,151,30,0.35); color: #f7971e; cursor: not-allowed;
+        }
+        .rsv-pc.maintenance {
+            background: linear-gradient(135deg, rgba(245,87,108,0.1), rgba(240,147,251,0.1));
+            border: 2px dashed rgba(245,87,108,0.4); color: #f5576c; cursor: not-allowed;
+        }
+        .rsv-pc.selected-pc {
+            background: linear-gradient(135deg,#667eea,#764ba2) !important;
+            border-color: transparent !important; color: #fff !important;
+            transform: scale(1.1) !important; box-shadow: 0 6px 18px rgba(102,126,234,0.5) !important;
+        }
+        .rsv-pc-num   { font-size: 11px; font-weight: 800; line-height: 1; }
+        .rsv-pc-icon  { font-size: 16px; margin-bottom: 2px; }
+        .rsv-pc-label { font-size: 8px; font-weight: 600; margin-top: 1px; opacity: 0.85; }
+
+        /* Summary */
+        .rsv-summary {
+            background: #f8faff; border: 2px solid rgba(102,126,234,0.18);
+            border-radius: 16px; padding: 20px 24px; margin-bottom: 20px;
+        }
+        .rsv-summary-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .rsv-summary-row:last-child { border-bottom: none; }
+        .rsv-summary-icon  { font-size: 1.2rem; flex-shrink: 0; }
+        .rsv-summary-label { font-weight: 600; color: #64748b; width: 120px; flex-shrink: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .rsv-summary-value { font-weight: 700; color: #0f172a; }
+
+        /* Navigation buttons */
+        .rsv-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; }
+        .rsv-btn-back {
+            padding: 11px 22px; background: white; color: #64748b;
+            border: 2px solid #e2e8f0; border-radius: 10px;
+            font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all 0.2s;
+        }
+        .rsv-btn-back:hover { border-color: #94a3b8; color: #0f172a; }
+        .rsv-btn-next {
+            padding: 11px 24px; background: linear-gradient(135deg,#667eea,#764ba2);
+            color: #fff; border: none; border-radius: 10px;
+            font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all 0.2s;
+        }
+        .rsv-btn-next:hover  { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(102,126,234,0.4); }
+        .rsv-btn-next:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .rsv-btn-confirm {
+            padding: 11px 28px; background: linear-gradient(135deg,#11998e,#38ef7d);
+            color: #fff; border: none; border-radius: 10px;
+            font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all 0.2s;
+        }
+        .rsv-btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(17,153,142,0.4); }
+        .rsv-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* My Reservations section */
+        .rsv-my-section { margin-top: 24px; border-top: 2px solid #f1f5f9; padding-top: 20px; }
+        .rsv-my-title   { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+        .rsv-my-item {
+            display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+            border: 1.5px solid #e2e8f0; border-radius: 12px; margin-bottom: 8px; transition: all 0.2s;
+        }
+        .rsv-my-item:hover { border-color: rgba(102,126,234,0.3); background: #fafbff; }
+        .rsv-my-info { flex: 1; }
+        .rsv-my-name { font-size: 13px; font-weight: 700; color: #0f172a; }
+        .rsv-my-sub  { font-size: 12px; color: #64748b; margin-top: 2px; }
+        .rsv-status-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+        .rsv-status-pending   { background: rgba(247,151,30,0.12);  color: #f7971e; }
+        .rsv-status-approved  { background: rgba(17,153,142,0.12);  color: #11998e; }
+        .rsv-status-cancelled { background: rgba(100,116,139,0.12); color: #64748b; }
+        .rsv-cancel-btn {
+            padding: 5px 12px; background: white; color: #f5576c;
+            border: 1.5px solid #f5576c; border-radius: 8px;
+            font-size: 11px; font-weight: 700; cursor: pointer;
+            font-family: 'Poppins', sans-serif; transition: all 0.2s; white-space: nowrap;
+        }
+        .rsv-cancel-btn:hover { background: rgba(245,87,108,0.08); }
+
+        .rsv-loading { text-align: center; padding: 40px 20px; color: #94a3b8; }
+        .rsv-spinner {
+            width: 36px; height: 36px; border: 3px solid #e2e8f0;
+            border-top-color: #667eea; border-radius: 50%;
+            animation: rsvSpin 0.8s linear infinite; margin: 0 auto 12px;
+        }
+        @keyframes rsvSpin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 600px) {
+            .rsv-pc-container { grid-template-columns: repeat(5,1fr); }
+            .rsv-stepper { padding: 14px 16px 0; }
+            .rsv-body    { padding: 20px 16px 24px; }
+            .rsv-head    { padding: 18px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">SIT-IN MONITOR</div>
+        <div class="nav-links">
+            <a href="/dashboard" class="active">Home</a>
+            <a href="#" id="notifBtn">Notification <span id="notifBadge" style="display:none;background:#f5576c;color:white;border-radius:50%;padding:1px 6px;font-size:10px;font-weight:800;margin-left:4px;"></span></a>
+            <a href="#" id="editProfileBtn">Edit Profile</a>
+            <a href="#" id="historyBtn">History</a>
+            <a href="#" id="reservationBtn">Reservation</a>
+            <a href="/logout" class="btn-logout">Log Out</a>
+        </div>
+    </nav>
+
+    <!-- GRID -->
+    <div class="dashboard-wrapper">
+
+        <!-- STUDENT INFORMATION -->
+        <div class="card">
+            <div class="card-header">
+                <span>👤</span> Student Information
+            </div>
+            <div class="student-body">
+                <div class="avatar-circle" id="dashAvatar">
+                    {% if user and user.profilePic %}
+                        <img src="{{ user.profilePic }}" alt="Profile">
+                    {% else %}
+                        🎓
+                    {% endif %}
+                </div>
+                <div class="info-list">
+                    <div class="info-row">
+                        <div class="info-icon">👤</div>
+                        <div>
+                            <div class="info-label">Name</div>
+                            <div class="info-value">{{ user.firstName ~ ' ' ~ user.lastName if user else '—' }}</div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-icon">🎓</div>
+                        <div>
+                            <div class="info-label">Course</div>
+                            <div class="info-value">{{ user.course if user else '—' }}</div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-icon">📅</div>
+                        <div>
+                            <div class="info-label">Year Level</div>
+                            <div class="info-value">{{ user.courseLevel if user else '—' }}</div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-icon">✉️</div>
+                        <div>
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ user.email if user else '—' }}</div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-icon">🪪</div>
+                        <div>
+                            <div class="info-label">ID Number</div>
+                            <div class="info-value">{{ user.idNumber if user else '—' }}</div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-icon">📍</div>
+                        <div>
+                            <div class="info-label">Address</div>
+                            <div class="info-value">{{ user.address if user else '—' }}</div>
+                        </div>
+                    </div>
+                </div>
+<div class="session-badge" onclick="openSessionTable()" 
+    style="cursor:pointer;transition:all .2s;position:relative;"
+    onmouseover="this.style.opacity='.85';document.getElementById('sessionTooltip').style.opacity='1';document.getElementById('sessionTooltip').style.transform='translateY(0)';" 
+    onmouseout="this.style.opacity='1';document.getElementById('sessionTooltip').style.opacity='0';document.getElementById('sessionTooltip').style.transform='translateY(4px)';">
+    
+    <!-- Tooltip -->
+    <div id="sessionTooltip" style="
+        position:absolute;bottom:calc(100% + 8px);left:50%;
+        transform:translateX(-50%) translateY(4px);
+        background:linear-gradient(135deg,#667eea,#764ba2);
+        color:white;padding:6px 14px;border-radius:8px;
+        font-size:11px;font-weight:700;white-space:nowrap;
+        opacity:0;transition:all 0.2s;pointer-events:none;
+        box-shadow:0 4px 12px rgba(102,126,234,0.4);z-index:10;">
+        📋 Click to view session history
+        <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);
+            border:5px solid transparent;border-top-color:#764ba2;"></div>
+    </div>
+
+    <span class="session-label">🕐 Remaining Sessions</span>
+    <span class="session-count">{{ user.sessions if user and user.sessions is not none else 30 }}</span>
+</div>
+            </div>
+        </div>
+
+  
+        <!-- ══ NOTIFICATION MODAL ══ -->
+<div id="notificationModal" style="
+    display:none;position:fixed;z-index:3200;inset:0;
+    background:rgba(15,23,42,0.6);backdrop-filter:blur(6px);
+    overflow-y:auto;padding:20px;animation:hFadeIn .25s ease;">
+    <div style="
+        background:#fff;margin:30px auto;border-radius:22px;
+        width:96%;max-width:620px;
+        box-shadow:0 24px 64px rgba(0,0,0,0.18);
+        animation:hSlideUp .35s cubic-bezier(0.4,0,0.2,1);overflow:hidden;">
+ 
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div style="font-size:18px;font-weight:800;">🔔 Notifications</div>
+                <div id="notifModalSub" style="font-size:12px;opacity:.75;margin-top:3px;">Your latest updates</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button onclick="markAllNotifRead()" id="markAllBtn" style="padding:6px 14px;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;color:white;font-size:11px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.32)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✓ Mark all read</button>
+                <button onclick="document.getElementById('notificationModal').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+            </div>
+        </div>
+ 
+        <!-- List -->
+        <div id="notifList" style="padding:16px 20px 24px;display:flex;flex-direction:column;gap:10px;max-height:560px;overflow-y:auto;">
+            <div style="text-align:center;padding:40px;color:#94a3b8;">
+                <div style="font-size:2rem;opacity:.2;margin-bottom:12px;">🔔</div>
+                Loading notifications…
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- ══ RESERVATION MODAL ══ -->
+        <div id="reservationModal" class="rsv-modal">
+            <div class="rsv-box">
+
+                <!-- Header -->
+                <div class="rsv-head">
+                    <div>
+                        <div class="rsv-head-title">📅 Lab Reservation</div>
+                        <div class="rsv-head-sub">Book your PC slot in advance</div>
+                    </div>
+                    <button class="rsv-close" id="rsvCloseBtn">✕</button>
+                </div>
+
+                <!-- Stepper: 5 steps -->
+                <div class="rsv-stepper">
+                    <div class="rsv-step active" id="rsvStep1">
+                        <div class="rsv-step-num" id="rsvStepNum1">1</div>
+                        <div class="rsv-step-label">Choose Date</div>
+                    </div>
+                    <div class="rsv-step" id="rsvStep2">
+                        <div class="rsv-step-num" id="rsvStepNum2">2</div>
+                        <div class="rsv-step-label">Choose Lab</div>
+                    </div>
+                    <div class="rsv-step" id="rsvStep3">
+                        <div class="rsv-step-num" id="rsvStepNum3">3</div>
+                        <div class="rsv-step-label">Time Slot</div>
+                    </div>
+                    <div class="rsv-step" id="rsvStep4">
+                        <div class="rsv-step-num" id="rsvStepNum4">4</div>
+                        <div class="rsv-step-label">Choose PC</div>
+                    </div>
+                    <div class="rsv-step" id="rsvStep5">
+                        <div class="rsv-step-num" id="rsvStepNum5">5</div>
+                        <div class="rsv-step-label">Confirm</div>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="rsv-body">
+
+                    <!-- ══ STEP 1: Choose Date ══ -->
+                    <div class="rsv-panel active" id="rsvPanel1">
+                        <div class="rsv-section-label">📆 Select Your Preferred Date</div>
+
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px 0;">
+                            <div style="background:#f8faff;border:2px solid rgba(102,126,234,0.2);border-radius:18px;padding:32px 40px;text-align:center;width:100%;max-width:380px;">
+                                <div style="font-size:2.5rem;margin-bottom:14px;">📅</div>
+                                <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:#64748b;margin-bottom:10px;">Pick a Date</label>
+                                <input type="date" class="rsv-date-input" id="rsvDateInput" style="width:100%;font-size:15px;padding:13px 16px;text-align:center;">
+                                <div id="rsvDateDisplay" style="margin-top:12px;font-size:13px;color:#94a3b8;font-weight:600;">No date selected</div>
+                            </div>
+                            <div style="font-size:12px;color:#94a3b8;font-weight:600;text-align:center;max-width:320px;line-height:1.7;">
+                                💡 Select a date first so we can show you only labs that have available slots on that day.
+                            </div>
+                        </div>
+
+                        <div class="rsv-nav">
+                            <div></div>
+                            <button class="rsv-btn-next" id="rsvNext1" onclick="rsvGoTo(2)" disabled>Next →</button>
+                        </div>
+
+                        <!-- My Reservations -->
+                        <div class="rsv-my-section">
+                            <div class="rsv-my-title">🗓️ My Reservations</div>
+                            <div id="rsvMyList">
+                                <div class="rsv-loading"><div class="rsv-spinner"></div>Loading…</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══ STEP 2: Choose Lab ══ -->
+                    <div class="rsv-panel" id="rsvPanel2">
+
+                        <button class="rsv-search-labs-btn" id="rsvSearchLabsBtn" onclick="rsvSearchLabs()">
+                            <span class="btn-icon">🔍</span>
+                            Search Available Labs
+                        </button>
+
+                        <!-- Lab Loading -->
+                        <div class="rsv-lab-loading" id="rsvLabLoading">
+                            <div class="rsv-lab-loading-inner">
+                                <div class="rsv-ring-loader">
+                                    <div class="ring"></div>
+                                    <div class="ring"></div>
+                                    <div class="ring"></div>
+                                </div>
+                                <div class="rsv-loading-dots">
+                                    <div class="rsv-loading-dot"></div>
+                                    <div class="rsv-loading-dot"></div>
+                                    <div class="rsv-loading-dot"></div>
+                                </div>
+                                <div class="rsv-loading-msg" id="rsvLabLoadingMsg">Scanning available labs…</div>
+                                <div class="rsv-progress-bar-wrap">
+                                    <div class="rsv-progress-bar-fill" id="rsvLabProgressBar"></div>
+                                </div>
+                                <div class="rsv-loading-sub" id="rsvLabLoadingSub">Checking availability…</div>
+                            </div>
+                        </div>
+
+                        <!-- Lab Grid -->
+                        <div id="rsvLabGridWrap" style="display:none;">
+                            <div class="rsv-section-label">✅ Available Laboratories</div>
+                            <div class="rsv-lab-grid" id="rsvLabGrid"></div>
+                        </div>
+
+                        <div class="rsv-nav">
+                            <button class="rsv-btn-back" onclick="rsvGoTo(1)">← Back</button>
+                            <button class="rsv-btn-next" id="rsvNext2" onclick="rsvGoTo(3)" disabled>Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- ══ STEP 3: Time Slot ══ -->
+                    <div class="rsv-panel" id="rsvPanel3">
+                        <div class="rsv-section-label">⏰ Select a Time Slot</div>
+
+                        <!-- Info bar -->
+                        <div style="background:#f0f4ff;border:1.5px solid rgba(102,126,234,0.2);border-radius:12px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#334155;display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:1.2rem;">📋</span>
+                            <span>Lab <strong id="rsvSlotLabDisplay" style="color:#667eea;">—</strong> &nbsp;|&nbsp; 📅 <strong id="rsvSlotDateDisplay" style="color:#667eea;">—</strong></span>
+                        </div>
+
+                        <!-- Slot Loading -->
+                        <div id="rsvSlotsLoading" class="rsv-slot-loading-wrap">
+                            <div class="rsv-slot-scanner">
+                                <div class="rsv-slot-scanner-line"></div>
+                                <div class="rsv-slot-scanner-grid">
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                    <div class="rsv-slot-scanner-cell"></div>
+                                </div>
+                            </div>
+                            <div class="rsv-slot-loading-msg" id="rsvSlotLoadingMsg">Scanning time slots…</div>
+                            <div class="rsv-slot-loading-sub">Checking availability for Lab <span id="rsvSlotLoadingLab">—</span></div>
+                            <div class="rsv-progress-bar-wrap" style="margin:0 auto;">
+                                <div class="rsv-progress-bar-fill" id="rsvSlotProgressBar"></div>
+                            </div>
+                        </div>
+
+                        <div id="rsvSlotsResult" style="display:none;">
+                            <div class="rsv-slot-grid" id="rsvSlotGrid"></div>
+                        </div>
+
+                        <div id="rsvNoSlots" style="display:none;text-align:center;padding:32px 20px;color:#94a3b8;">
+                            <div style="font-size:2.4rem;opacity:0.2;margin-bottom:12px;">🕐</div>
+                            <strong style="font-size:14px;color:#0f172a;">No available slots</strong>
+                            <p style="font-size:13px;margin-top:6px;">All time slots for this lab and date are fully booked.</p>
+                        </div>
+
+                        <div class="rsv-nav" style="margin-top:16px;">
+                            <button class="rsv-btn-back" onclick="rsvGoTo(2)">← Back</button>
+                            <button class="rsv-btn-next" id="rsvNext3" onclick="rsvGoTo(4)" disabled>Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- ══ STEP 4: Choose PC ══ -->
+                    <div class="rsv-panel" id="rsvPanel4">
+                        <div class="rsv-section-label">💻 Select Your PC</div>
+
+                        <!-- Info bar -->
+                        <div style="background:#f0f4ff;border:1.5px solid rgba(102,126,234,0.2);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#334155;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <span style="font-size:1.2rem;">📋</span>
+                            <span>Lab <strong id="rsvPcLabDisplay" style="color:#667eea;">—</strong> &nbsp;|&nbsp; 📅 <strong id="rsvPcDateDisplay" style="color:#667eea;">—</strong> &nbsp;|&nbsp; ⏰ <strong id="rsvPcSlotDisplay" style="color:#667eea;">—</strong></span>
+                        </div>
+
+                        <div class="rsv-pc-legend">
+                            <div class="rsv-legend-item"><div class="rsv-legend-dot available"></div>Available</div>
+                            <div class="rsv-legend-item"><div class="rsv-legend-dot reserved"></div>Reserved</div>
+                            <div class="rsv-legend-item"><div class="rsv-legend-dot maintenance"></div>Maintenance</div>
+                            <div class="rsv-legend-item"><div class="rsv-legend-dot selected"></div>Your Choice</div>
+                        </div>
+
+                        <div id="rsvPcContainer" class="rsv-pc-container">
+                            <div class="rsv-loading" style="grid-column:1/-1;">
+                                <div class="rsv-spinner"></div>
+                                <div>Loading PCs…</div>
+                            </div>
+                        </div>
+
+                        <div id="rsvPcSelectedInfo" style="display:none;text-align:center;padding:10px;font-size:13px;font-weight:700;color:#667eea;background:rgba(102,126,234,0.08);border-radius:10px;margin-bottom:8px;">
+                            ✓ PC <span id="rsvSelectedPcNum">—</span> selected
+                        </div>
+
+                        <div class="rsv-nav">
+                            <button class="rsv-btn-back" onclick="rsvGoTo(3)">← Back</button>
+                            <button class="rsv-btn-next" id="rsvNext4" onclick="rsvGoTo(5)" disabled>Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- ══ STEP 5: Confirm ══ -->
+                    <div class="rsv-panel" id="rsvPanel5">
+                        <div class="rsv-section-label">✅ Confirm Your Reservation</div>
+                        <div class="rsv-summary">
+                            <div class="rsv-summary-row">
+                                <div class="rsv-summary-icon">📆</div>
+                                <div class="rsv-summary-label">Date</div>
+                                <div class="rsv-summary-value" id="sumDate">—</div>
+                            </div>
+                            <div class="rsv-summary-row">
+                                <div class="rsv-summary-icon">🏫</div>
+                                <div class="rsv-summary-label">Laboratory</div>
+                                <div class="rsv-summary-value" id="sumLab">—</div>
+                            </div>
+                            <div class="rsv-summary-row">
+                                <div class="rsv-summary-icon">⏰</div>
+                                <div class="rsv-summary-label">Time Slot</div>
+                                <div class="rsv-summary-value" id="sumSlot">—</div>
+                            </div>
+                            <div class="rsv-summary-row">
+                                <div class="rsv-summary-icon">💻</div>
+                                <div class="rsv-summary-label">PC Number</div>
+                                <div class="rsv-summary-value" id="sumPc">—</div>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:20px;">
+                            ⚠️ Please double-check your reservation details. Once confirmed, you can cancel from the reservations list.
+                        </p>
+                        <div class="rsv-nav">
+                            <button class="rsv-btn-back" onclick="rsvGoTo(4)">← Back</button>
+                            <button class="rsv-btn-confirm" id="rsvConfirmBtn" onclick="rsvSubmit()">✓ Confirm Reservation</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ANNOUNCEMENT CARD -->
+        <div class="card">
+            <div class="card-header">
+                <span>📢</span> Announcement
+            </div>
+            <div style="padding: 20px 24px; display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;">
+                {% if announcements %}
+                    {% for ann in announcements %}
+                    <div style="border:1.5px solid #e2e8f0; border-radius:12px; padding:14px 16px;">
+                        <div style="font-size:12px; font-weight:700; color:#667eea; margin-bottom:7px;">
+                            CCS Admin | {{ ann.postedAt }}
+                        </div>
+                        <p style="font-size:13px; color:#334155; line-height:1.65; white-space:pre-wrap;">{{ ann.content }}</p>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align:center; padding:40px 20px; color:#94a3b8;">
+                        <div style="font-size:2.5rem; opacity:0.2; margin-bottom:12px;">📢</div>
+                        <strong style="font-size:14px; color:#0f172a;">No Announcements</strong>
+                        <p style="font-size:13px; margin-top:6px; line-height:1.6;">Check back later for updates from CCS Admin.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+       <!-- RULES AND REGULATIONS -->
+<div class="card rules-card">
+    <div class="card-header">
+        <span>📜</span> Rules and Regulations
+    </div>
+   <div style="padding:20px 24px;max-height:650px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
+
+        <!-- Header -->
+        <div style="text-align:center;padding:14px 10px;background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.08));border:1.5px solid rgba(102,126,234,0.15);border-radius:14px;">
+            <div style="font-size:13px;font-weight:800;color:#0f172a;">University of Cebu</div>
+            <div style="font-size:12px;font-weight:700;color:#667eea;margin-top:2px;">College of Information &amp; Computer Studies</div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Laboratory Rules and Regulations</div>
+        </div>
+
+        <!-- Intro -->
+        <p style="font-size:12px;color:#64748b;line-height:1.7;font-style:italic;margin:0;">
+            To avoid embarrassment and maintain camaraderie with your friends and superiors at our laboratories, please observe the following:
+        </p>
+
+        <!-- Rules list -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">1</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Maintain silence, proper decorum, and discipline inside the laboratory. Mobile phones, walkmans and other personal pieces of equipment must be <strong>switched off</strong>.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">2</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;"><strong>Games are not allowed</strong> inside the lab. This includes computer-related games, card games and other games that may disturb the operation of the lab.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">3</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Surfing the Internet is allowed <strong>only with the permission of the instructor</strong>. Downloading and installing of software are strictly prohibited.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#fff5f5;border:1.5px solid rgba(245,87,108,0.15);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f5576c,#f093fb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">4</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Getting access to other websites <strong>not related to the course</strong> (especially pornographic and illicit sites) is <strong>strictly prohibited</strong>.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#fff5f5;border:1.5px solid rgba(245,87,108,0.15);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f5576c,#f093fb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">5</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;"><strong>Deleting computer files</strong> and changing the set-up of the computer is a <strong>major offense</strong>.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">6</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Observe computer time usage carefully. A <strong>fifteen-minute allowance</strong> is given for each use. Otherwise, the unit will be given to those who wish to "sit-in".</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">7</div>
+                <div style="font-size:12px;color:#334155;line-height:1.7;">
+                    <p style="margin:0 0 6px;">Observe proper decorum while inside the laboratory:</p>
+                    <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;">
+                        <li>Do not enter the lab unless the instructor is present.</li>
+                        <li>All bags, knapsacks, and the likes must be deposited at the counter.</li>
+                        <li>Follow the seating arrangement of your instructor.</li>
+                        <li>At the end of class, all software programs must be closed.</li>
+                        <li>Return all chairs to their proper places after using.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#fff5f5;border:1.5px solid rgba(245,87,108,0.15);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f5576c,#f093fb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">8</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;"><strong>Chewing gum, eating, drinking, smoking,</strong> and other forms of vandalism are prohibited inside the lab.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#fff5f5;border:1.5px solid rgba(245,87,108,0.15);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f5576c,#f093fb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">9</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Anyone causing a continual disturbance will be asked to leave. Acts or gestures offensive to the members of the community, including <strong>public display of physical intimacy</strong>, are not tolerated.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#fff5f5;border:1.5px solid rgba(245,87,108,0.15);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f5576c,#f093fb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">10</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Persons exhibiting <strong>hostile or threatening behavior</strong> such as yelling, swearing, or disregarding requests made by lab personnel will be asked to leave.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">11</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">For serious offenses, the lab personnel may call the <strong>Civil Security Office (CSU)</strong> for assistance.</p>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:#f8faff;border:1.5px solid rgba(102,126,234,0.12);border-radius:12px;">
+                <div style="min-width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">12</div>
+                <p style="margin:0;font-size:12px;color:#334155;line-height:1.7;">Any technical problem or difficulty must be addressed to the <strong>laboratory supervisor, student assistant or instructor immediately</strong>.</p>
+            </div>
+
+        </div>
+
+        <!-- Disciplinary Action -->
+        <div style="background:linear-gradient(135deg,rgba(245,87,108,0.06),rgba(240,147,251,0.06));border:1.5px solid rgba(245,87,108,0.2);border-radius:14px;padding:16px 18px;">
+            <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.7px;color:#f5576c;margin-bottom:10px;">⚠️ Disciplinary Action</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <span style="font-size:11px;font-weight:800;color:#f5576c;background:rgba(245,87,108,0.1);padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;">1st Offense</span>
+                    <p style="margin:0;font-size:12px;color:#334155;line-height:1.6;">The Head, Dean, or OIC recommends to the Guidance Center a <strong>suspension from classes</strong> for each offender.</p>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <span style="font-size:11px;font-weight:800;color:#f5576c;background:rgba(245,87,108,0.1);padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;">2nd &amp; Beyond</span>
+                    <p style="margin:0;font-size:12px;color:#334155;line-height:1.6;">A recommendation for a <strong>heavier sanction</strong> will be endorsed to the Guidance Center.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- ══ SIT-IN SUMMARY CARD (Full Width) ══ -->
+<div class="card" id="sitinSummaryCard" style="grid-column: 1 / -1;">
+    <div class="card-header">
+        <span>📊</span> Sit-in Summary
+    </div>
+    <div id="summaryBody" style="padding: 20px 24px;">
+
+        <!-- Loading state -->
+        <div id="summaryLoading" style="text-align:center;padding:32px 20px;color:#94a3b8;">
+            <div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#667eea;border-radius:50%;animation:rsvSpin .8s linear infinite;margin:0 auto 12px;"></div>
+            <div style="font-size:13px;font-weight:600;">Loading summary…</div>
+        </div>
+
+        <!-- Stats grid -->
+        <div id="summaryStats" style="display:none;grid-template-columns:repeat(4,1fr);gap:16px;">
+
+            <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.08));border:1.5px solid rgba(102,126,234,0.18);border-radius:16px;padding:20px 16px;text-align:center;">
+                <div style="font-size:2rem;margin-bottom:8px;"></div>
+                <div id="sumTotalHours" style="font-size:28px;font-weight:800;color:#667eea;line-height:1;">0h</div>
+                <div id="sumTotalMins" style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;"></div>
+                <div style="font-size:11px;font-weight:700;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;">Total Hours</div>
+            </div>
+
+            <div style="background:linear-gradient(135deg,rgba(17,153,142,0.08),rgba(56,239,125,0.08));border:1.5px solid rgba(17,153,142,0.18);border-radius:16px;padding:20px 16px;text-align:center;">
+                <div style="font-size:2rem;margin-bottom:8px;"></div>
+                <div id="sumTotalSessions" style="font-size:28px;font-weight:800;color:#11998e;line-height:1;">0</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;">completed</div>
+                <div style="font-size:11px;font-weight:700;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;">Sessions</div>
+            </div>
+
+            <div style="background:linear-gradient(135deg,rgba(247,151,30,0.08),rgba(255,210,0,0.08));border:1.5px solid rgba(247,151,30,0.18);border-radius:16px;padding:20px 16px;text-align:center;">
+                <div style="font-size:2rem;margin-bottom:8px;"></div>
+                <div id="sumAvgDuration" style="font-size:28px;font-weight:800;color:#f7971e;line-height:1;">0m</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;">per session</div>
+                <div style="font-size:11px;font-weight:700;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;">Avg Duration</div>
+            </div>
+
+            <div style="background:linear-gradient(135deg,rgba(245,87,108,0.08),rgba(240,147,251,0.08));border:1.5px solid rgba(245,87,108,0.18);border-radius:16px;padding:20px 16px;text-align:center;">
+                <div style="font-size:2rem;margin-bottom:8px;"></div>
+                <div id="sumLongest" style="font-size:28px;font-weight:800;color:#f5576c;line-height:1;">0m</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;">single record</div>
+                <div style="font-size:11px;font-weight:700;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;">Longest Session</div>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div id="summaryProgressWrap" style="display:none;margin-top:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;">Sessions Used</span>
+                <span id="summaryProgressLabel" style="font-size:12px;font-weight:700;color:#667eea;"></span>
+            </div>
+            <div style="height:8px;background:#f1f5f9;border-radius:10px;overflow:hidden;">
+                <div id="summaryProgressBar" style="height:100%;border-radius:10px;background:linear-gradient(90deg,#667eea,#764ba2);width:0%;transition:width 1s ease;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                <span style="font-size:11px;color:#94a3b8;font-weight:600;" id="summaryProgressUsed"></span>
+                <span style="font-size:11px;color:#94a3b8;font-weight:600;" id="summaryProgressMax"></span>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="summaryEmpty" style="display:none;text-align:center;padding:40px 20px;color:#94a3b8;">
+            <div style="font-size:2.5rem;opacity:0.18;margin-bottom:12px;"></div>
+            <strong style="font-size:14px;color:#0f172a;">No sit-in data yet</strong>
+            <p style="font-size:13px;margin-top:6px;line-height:1.6;">Your statistics will appear here after your first completed sit-in session.</p>
+        </div>
+
+    </div>
+</div>
+<!-- ══ SOFTWARE AVAILABILITY SECTION ══ -->
+<div class="card" style="grid-column: 1 / -1;">
+    <div class="card-header">
+        <span>🖥️</span> Lab Software Availability
+    </div>
+    <div style="padding:20px 24px;">
+        <!-- Lab Filter Tabs -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+            <button onclick="swStudentFilter('')" id="swTab-all"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid transparent;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">
+                All Labs
+            </button>
+            <button onclick="swStudentFilter('524')" id="swTab-524"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">Lab 524</button>
+            <button onclick="swStudentFilter('526')" id="swTab-526"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">Lab 526</button>
+            <button onclick="swStudentFilter('528')" id="swTab-528"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">Lab 528</button>
+            <button onclick="swStudentFilter('530')" id="swTab-530"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">Lab 530</button>
+            <button onclick="swStudentFilter('544')" id="swTab-544"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">Lab 544</button>
+            <button onclick="swStudentFilter('542')" id="swTab-542"
+                style="padding:6px 14px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all .2s;">Lab 542</button>
+        </div>
+
+        <!-- Software Grid -->
+        <div id="swStudentGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+            <div style="grid-column:1/-1;text-align:center;padding:32px;color:#94a3b8;font-size:13px;">
+                <div style="font-size:2rem;opacity:.18;margin-bottom:8px;">🖥️</div>
+                Loading software list…
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var _swStudentAll = [];
+var _swStudentLab = '';
+
+function loadStudentSoftware() {
+    fetch('/student/lab_software')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            _swStudentAll = data;
+            swStudentRender();
+        })
+        .catch(function() {
+            var grid = document.getElementById('swStudentGrid');
+            if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:#94a3b8;font-size:13px;">Could not load software list.</div>';
+        });
+}
+
+function swStudentFilter(lab) {
+    _swStudentLab = lab;
+    var tabId = 'swTab-' + (lab || 'all');
+    document.querySelectorAll('[id^="swTab-"]').forEach(function(btn) {
+        var active = btn.id === tabId;
+        btn.style.background  = active ? 'linear-gradient(135deg,#667eea,#764ba2)' : 'white';
+        btn.style.color       = active ? 'white' : '#64748b';
+        btn.style.borderColor = active ? 'transparent' : '#e2e8f0';
+    });
+    swStudentRender();
+}
+
+function swStudentRender() {
+    var grid = document.getElementById('swStudentGrid');
+    var data = _swStudentLab
+        ? _swStudentAll.filter(function(s) { return s.lab === 'Lab ' + _swStudentLab; })
+        : _swStudentAll;
+
+    if (!data.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:#94a3b8;font-size:13px;">'
+            + '<div style="font-size:2rem;opacity:.18;margin-bottom:8px;">🖥️</div>'
+            + 'No software listed for this lab yet.</div>';
+        return;
+    }
+
+    grid.innerHTML = data.map(function(s) {
+        var isAvail = s.status === 'available';
+        return '<div style="background:' + (isAvail ? 'rgba(17,153,142,0.04)' : 'rgba(245,87,108,0.04)') + ';'
+            + 'border:1.5px solid ' + (isAvail ? 'rgba(17,153,142,0.25)' : 'rgba(245,87,108,0.25)') + ';'
+            + 'border-radius:14px;padding:14px 16px;transition:all .2s;" '
+            + 'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 18px rgba(0,0,0,0.07)\'" '
+            + 'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'none\'">'
+            + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">'
+            +   '<div style="font-size:13px;font-weight:700;color:#0f172a;line-height:1.3;">' + s.name + '</div>'
+            +   '<span style="padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0;'
+            +     'background:' + (isAvail ? 'rgba(17,153,142,0.1)' : 'rgba(245,87,108,0.1)') + ';'
+            +     'color:' + (isAvail ? '#11998e' : '#f5576c') + ';">'
+            +     (isAvail ? '✅ Available' : '❌ Unavailable') + '</span>'
+            + '</div>'
+            + (s.version
+                ? '<div style="margin-bottom:8px;"><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:11px;color:#334155;">' + s.version + '</code></div>'
+                : '')
+            + '<div style="font-size:11px;font-weight:700;color:#667eea;background:rgba(102,126,234,0.08);display:inline-block;padding:2px 9px;border-radius:20px;">' + s.lab + '</div>'
+            + '</div>';
+    }).join('');
+}
+
+// Auto-load on page ready
+document.addEventListener('DOMContentLoaded', function() {
+    loadStudentSoftware();
+});
+</script>
+    <!-- ══ HISTORY MODAL ══ -->
+    <div id="historyModal" class="hmodal">
+        <div class="hmodal-box">
+            <div class="hmodal-head">
+                <div>
+                    <h3>📋 History Information</h3>
+                    <p>Your previous sit-in sessions</p>
+                </div>
+                <button class="hmodal-close" id="closeHistoryModal">✕</button>
+            </div>
+            <div class="hmodal-body">
+                <div class="h-controls">
+                    <div class="h-entries-label">
+                        Show
+                        <select class="h-entries-select" id="hEntriesSelect" onchange="hApplyFilter()">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        entries per page
+                    </div>
+                    <input type="text" class="h-search-input" id="hSearchInput" placeholder="🔍  Search…" oninput="hApplyFilter()">
+                </div>
+                <div class="h-table-wrap">
+                    <div class="h-table-scroll">
+                        <table class="h-table">
+                            <thead>
+                                <tr>
+                                    <th onclick="hSortBy('idNumber')">ID Number <span id="hs-idNumber">↕</span></th>
+                                    <th onclick="hSortBy('studentName')">Name <span id="hs-studentName">↕</span></th>
+                                    <th onclick="hSortBy('purpose')">Sit Purpose <span id="hs-purpose">↕</span></th>
+                                    <th onclick="hSortBy('lab')">Laboratory <span id="hs-lab">↕</span></th>
+                                    <th onclick="hSortBy('timeIn')">Login <span id="hs-timeIn">↕</span></th>
+                                    <th>Logout</th>
+                                    <th onclick="hSortBy('date')">Date <span id="hs-date">↕</span></th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hTableBody">
+                                <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="h-pagination-row">
+                    <div class="h-showing" id="hShowingInfo"></div>
+                    <div class="h-pages"   id="hPagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ FEEDBACK MODAL ══ -->
+    <div id="feedbackModal" class="fb-modal">
+        <div class="fb-modal-box">
+            <div class="fb-modal-head">
+                <div>
+                    <h3>💬 Leave Feedback</h3>
+                    <p id="fbSessionLabel">Session details</p>
+                </div>
+                <button class="fb-modal-close" id="closeFeedbackModal">✕</button>
+            </div>
+            <div class="fb-modal-body">
+                <div class="fb-session-info" id="fbSessionInfo"></div>
+                <label class="fb-label">Your Message</label>
+                <textarea class="fb-textarea" id="fbMessage" placeholder="Tell us about your sit-in experience…"></textarea>
+                <button class="fb-submit-btn" id="fbSubmitBtn" onclick="submitFeedback()">Submit Feedback</button>
+            </div>
+        </div>
+    </div>
+     <!-- ══ SESSION TABLE MODAL ══ -->
+<div id="sessionTableModal" style="
+    display:none;position:fixed;z-index:3500;inset:0;
+    background:rgba(15,23,42,0.65);backdrop-filter:blur(6px);
+    overflow-y:auto;padding:20px;animation:hFadeIn .25s ease;">
+    <div style="
+        background:#fff;margin:30px auto;border-radius:22px;
+        width:96%;max-width:900px;
+        box-shadow:0 24px 64px rgba(0,0,0,0.18);
+        animation:hSlideUp .35s cubic-bezier(0.4,0,0.2,1);overflow:hidden;">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div style="font-size:18px;font-weight:800;">🕐 Session History</div>
+                <div style="font-size:12px;opacity:.75;margin-top:3px;">Your sit-in session records</div>
+            </div>
+            <button onclick="document.getElementById('sessionTableModal').style.display='none'"
+                style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;"
+                onmouseover="this.style.background='rgba(255,255,255,0.35)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+        </div>
+
+        <!-- Table -->
+        <div style="padding:20px 24px 28px;">
+            <div style="border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+                <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead>
+                            <tr style="background:linear-gradient(135deg,#667eea,#764ba2);position:sticky;top:0;z-index:2;">
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">#</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Date</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Time In</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Time Out</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Duration</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Lab</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Purpose</th>
+                                <th style="padding:13px 14px;text-align:left;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionTableBody">
+                            <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="sessionTableEmpty" style="display:none;text-align:center;padding:40px;color:#94a3b8;">
+                <div style="font-size:2.5rem;opacity:.2;margin-bottom:12px;">🕐</div>
+                <strong style="font-size:14px;color:#0f172a;">No sessions yet</strong>
+                <p style="font-size:13px;margin-top:6px;">Your completed sit-in sessions will appear here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- ══ EDIT PROFILE MODAL ══ -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Profile</h2>
+                <p>Update your personal information below</p>
+                <button class="modal-close" id="closeEditModal">&times;</button>
+            </div>
+            <div class="avatar-upload-area">
+                <div class="avatar-preview" id="avatarPreview" onclick="document.getElementById('profilePicInput').click()">
+                    {% if user and user.profilePic %}
+                        <img id="avatarImg" src="{{ user.profilePic }}" alt="Profile">
+                    {% else %}
+                        <span id="avatarEmoji">🎓</span>
+                    {% endif %}
+                    <div class="overlay">📷</div>
+                </div>
+                <label class="avatar-upload-label">
+                    <span>Click to upload</span> a profile picture
+                </label>
+                <input type="file" id="profilePicInput" accept="image/*" style="display:none;">
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm" enctype="multipart/form-data">
+                    <div class="section-label">Personal Information</div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <input type="text" name="firstName" id="ep_firstName" value="{{ user.firstName if user else '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <input type="text" name="lastName" id="ep_lastName" value="{{ user.lastName if user else '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address *</label>
+                            <input type="email" name="email" id="ep_email" value="{{ user.email if user else '' }}" required>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>Course *</label>
+                            <select name="course" id="ep_course" required>
+                                <option value="">Select your course</option>
+                                <optgroup label="College of Computer Studies (30 sit-ins)">
+                                    <option value="BSIT" {% if user and user.course == 'BSIT' %}selected{% endif %}>BS Information Technology</option>
+                                    <option value="BSCS" {% if user and user.course == 'BSCS' %}selected{% endif %}>BS Computer Science</option>
+                                </optgroup>
+                                <optgroup label="Other Colleges (15 sit-ins)">
+                                    <option value="BSA"  {% if user and user.course == 'BSA'  %}selected{% endif %}>BS Accountancy</option>
+                                    <option value="BSCE" {% if user and user.course == 'BSCE' %}selected{% endif %}>BS Civil Engineering</option>
+                                    <option value="BSN"  {% if user and user.course == 'BSN'  %}selected{% endif %}>BS Nursing</option>
+                                    <option value="BSPSY" {% if user and user.course == 'BSPSY' %}selected{% endif %}>BS Psychology</option>
+                                    <option value="BSCrim" {% if user and user.course == 'BSCrim' %}selected{% endif %}>BS Criminology</option>
+                                    <option value="BSTM" {% if user and user.course == 'BSTM' %}selected{% endif %}>BS Tourism Management</option>
+                                    <option value="BSHM" {% if user and user.course == 'BSHM' %}selected{% endif %}>BS Hospitality Management</option>
+                                    <option value="JD"   {% if user and user.course == 'JD'   %}selected{% endif %}>Juris Doctor</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Year Level *</label>
+                            <select name="courseLevel" id="ep_courseLevel" required>
+                                <option value="">Select level</option>
+                                <option value="1st Year" {% if user and user.courseLevel == '1st Year' %}selected{% endif %}>1st Year</option>
+                                <option value="2nd Year" {% if user and user.courseLevel == '2nd Year' %}selected{% endif %}>2nd Year</option>
+                                <option value="3rd Year" {% if user and user.courseLevel == '3rd Year' %}selected{% endif %}>3rd Year</option>
+                                <option value="4th Year" {% if user and user.courseLevel == '4th Year' %}selected{% endif %}>4th Year</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Address *</label>
+                            <input type="text" name="address" id="ep_address" value="{{ user.address if user else '' }}" required>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="section-label">Change Password <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;">(leave blank to keep current)</span></div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <input type="password" name="password" id="ep_password" placeholder="Enter new password">
+                        </div>
+                        <div class="form-group">
+                            <label>Confirm Password</label>
+                            <input type="password" id="ep_confirmPassword" placeholder="Re-enter new password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save">💾 Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    /* ══ TOAST ══ */
+    function showToast(msg, type) {
+        document.querySelectorAll('.toast').forEach(function(t) { t.remove(); });
+        var t = document.createElement('div');
+        t.className = 'toast toast-' + (type || 'success');
+        t.textContent = msg;
+        document.body.appendChild(t);
+        requestAnimationFrame(function() { requestAnimationFrame(function() { t.classList.add('show'); }); });
+        setTimeout(function() { t.classList.remove('show'); setTimeout(function() { t.remove(); }, 400); }, 3200);
+    }
+
+    /* ══ HISTORY MODAL ══ */
+    var _hAllData = [], _hFiltered = [], _hPage = 1, _hSortCol = 'id', _hSortDir = 'desc';
+
+    document.getElementById('historyBtn').onclick = function(e) {
+        e.preventDefault();
+        document.getElementById('historyModal').style.display = 'block';
+        loadHistory();
+    };
+    document.getElementById('closeHistoryModal').onclick = function() {
+        document.getElementById('historyModal').style.display = 'none';
+    };
+    window.addEventListener('click', function(e) {
+        if (e.target === document.getElementById('historyModal'))  document.getElementById('historyModal').style.display  = 'none';
+        if (e.target === document.getElementById('feedbackModal')) document.getElementById('feedbackModal').style.display = 'none';
+        if (e.target === document.getElementById('reservationModal')) document.getElementById('reservationModal').style.display = 'none';
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.getElementById('historyModal').style.display    = 'none';
+            document.getElementById('feedbackModal').style.display   = 'none';
+            document.getElementById('reservationModal').style.display = 'none';
+        }
+    });
+
+    function loadHistory() {
+        document.getElementById('hTableBody').innerHTML =
+            '<tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">Loading…</td></tr>';
+        fetch('/student/history')
+            .then(function(r) { return r.json(); })
+            .then(function(data) { _hAllData = data; _hFiltered = data.slice(); _hPage = 1; hApplyFilter(); })
+            .catch(function() {
+                document.getElementById('hTableBody').innerHTML =
+                    '<tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8;">Failed to load history.</td></tr>';
+            });
+    }
+
+    function hParseTime(timeIn) {
+        if (!timeIn) return { date: '—', time: '—' };
+        var parts = timeIn.split(' ');
+        return { date: parts[0] || '—', time: parts.slice(1).join(' ') || '—' };
+    }
+
+    function hApplyFilter() {
+        var q = (document.getElementById('hSearchInput').value || '').toLowerCase();
+        _hFiltered = _hAllData.filter(function(r) {
+            return !q || (r.idNumber||'').toLowerCase().includes(q) || (r.studentName||'').toLowerCase().includes(q)
+                || (r.purpose||'').toLowerCase().includes(q) || (r.lab||'').toLowerCase().includes(q);
+        });
+        _hFiltered.sort(function(a, b) {
+            var av = '', bv = '';
+            if      (_hSortCol === 'idNumber')    { av = a.idNumber;    bv = b.idNumber; }
+            else if (_hSortCol === 'studentName') { av = a.studentName; bv = b.studentName; }
+            else if (_hSortCol === 'purpose')     { av = a.purpose;     bv = b.purpose; }
+            else if (_hSortCol === 'lab')         { av = a.lab;         bv = b.lab; }
+            else if (_hSortCol === 'timeIn')      { av = a.timeIn;      bv = b.timeIn; }
+            else if (_hSortCol === 'date')        { av = a.timeIn;      bv = b.timeIn; }
+            else                                  { av = a.id;          bv = b.id; }
+            if (av < bv) return _hSortDir === 'asc' ? -1 : 1;
+            if (av > bv) return _hSortDir === 'asc' ?  1 : -1;
+            return 0;
+        });
+        _hPage = 1;
+        hRenderTable();
+    }
+
+    function hSortBy(col) {
+        if (_hSortCol === col) { _hSortDir = _hSortDir === 'asc' ? 'desc' : 'asc'; }
+        else { _hSortCol = col; _hSortDir = 'asc'; }
+        ['idNumber','studentName','purpose','lab','timeIn','date'].forEach(function(c) {
+            var el = document.getElementById('hs-' + c);
+            if (el) el.textContent = c === _hSortCol ? (_hSortDir === 'asc' ? '↑' : '↓') : '↕';
+        });
+        hApplyFilter();
+    }
+
+    function hRenderTable() {
+        var perPage = parseInt(document.getElementById('hEntriesSelect').value) || 10;
+        var total   = _hFiltered.length;
+        var start   = (_hPage - 1) * perPage;
+        var end     = Math.min(start + perPage, total);
+        var page    = _hFiltered.slice(start, end);
+        var tbody   = document.getElementById('hTableBody');
+
+        if (!page.length) {
+            tbody.innerHTML = '<tr><td colspan="8"><div class="h-empty"><div class="h-empty-icon">📋</div>'
+                + '<strong style="font-size:14px;color:#0f172a;">'
+                + (_hAllData.length ? 'No records match your search.' : 'No sit-in history yet.')
+                + '</strong><p style="font-size:13px;margin-top:6px;">Your completed sit-in sessions will appear here.</p></div></td></tr>';
+        } else {
+            tbody.innerHTML = page.map(function(r, idx) {
+                var p       = hParseTime(r.timeIn);
+                var outTime = r.timeOut ? r.timeOut.split(' ').slice(1).join(' ') : '—';
+                var rowBg   = (start + idx) % 2 === 0 ? '#ffffff' : '#f8faff';
+                var fbBtn   = r.has_feedback
+                    ? '<button class="btn-feedback" disabled>✓ Done</button>'
+                    : '<button class="btn-feedback" onclick="openFeedback(' + r.id + ',\'' + (r.purpose||'') + '\',\'' + (r.lab||'') + '\',\'' + p.date + '\')">Feedback</button>';
+                return '<tr style="background:' + rowBg + ';" onmouseover="this.style.background=\'#eef2ff\'" onmouseout="this.style.background=\'' + rowBg + '\'">'
+                    + '<td><code style="font-size:12px;color:#667eea;background:rgba(102,126,234,0.08);padding:2px 7px;border-radius:5px;">' + (r.idNumber||'—') + '</code></td>'
+                    + '<td style="font-weight:600;">' + (r.studentName||'—') + '</td>'
+                    + '<td><span class="h-badge h-badge-purpose">' + (r.purpose||'—') + '</span></td>'
+                    + '<td><span class="h-badge h-badge-lab">Lab ' + (r.lab||'—') + '</span></td>'
+                    + '<td style="font-size:12px;color:#334155;">' + (p.time||'—') + '</td>'
+                    + '<td style="font-size:12px;color:#334155;">' + outTime + '</td>'
+                    + '<td style="font-size:12px;color:#64748b;">' + p.date + '</td>'
+                    + '<td>' + fbBtn + '</td>'
+                    + '</tr>';
+            }).join('');
+        }
+
+        document.getElementById('hShowingInfo').textContent = total
+            ? 'Showing ' + (start+1) + ' to ' + end + ' of ' + total + ' entries' : 'No entries';
+
+        var totalPages = Math.ceil(total / perPage);
+        var pag = document.getElementById('hPagination');
+        pag.innerHTML = '';
+        function pgBtn(label, pg, active, disabled) {
+            var b = document.createElement('button');
+            b.textContent = label; b.disabled = disabled;
+            b.className = 'h-page-btn' + (active ? ' active' : '');
+            if (!disabled) b.onclick = function() { _hPage = pg; hRenderTable(); };
+            return b;
+        }
+        pag.appendChild(pgBtn('«', 1, false, _hPage===1));
+        pag.appendChild(pgBtn('‹', _hPage-1, false, _hPage===1));
+        var sp = Math.max(1, _hPage-2), ep = Math.min(totalPages, sp+4);
+        for (var pg = sp; pg <= ep; pg++) pag.appendChild(pgBtn(pg, pg, pg===_hPage, false));
+        pag.appendChild(pgBtn('›', _hPage+1, false, _hPage===totalPages||!totalPages));
+        pag.appendChild(pgBtn('»', totalPages, false, _hPage===totalPages||!totalPages));
+    }
+
+    /* ══ FEEDBACK MODAL ══ */
+    var _fbSitinLogId = null, _fbLab = null;
+
+    function openFeedback(sitinLogId, purpose, lab, date) {
+        _fbSitinLogId = sitinLogId; _fbLab = lab;
+        document.getElementById('fbSessionLabel').textContent = purpose + ' · Lab ' + lab + ' · ' + date;
+        document.getElementById('fbSessionInfo').innerHTML =
+            '<strong>Purpose:</strong> ' + purpose + '<br><strong>Laboratory:</strong> Lab ' + lab + '<br><strong>Date:</strong> ' + date;
+        document.getElementById('fbMessage').value = '';
+        document.getElementById('feedbackModal').style.display = 'block';
+    }
+    document.getElementById('closeFeedbackModal').onclick = function() {
+        document.getElementById('feedbackModal').style.display = 'none';
+    };
+function submitFeedback() {
+    var message = document.getElementById('fbMessage').value.trim();
+    if (!message) { showToast('Please write your feedback first.', 'error'); return; }
+
+    // ── CLIENT-SIDE PROFANITY CHECK ──
+    if (clientHasFoul(message)) {
+        showToast('Your feedback contains inappropriate language. Please keep it respectful.', 'error');
+        return;
+    }
+
+    var btn = document.getElementById('fbSubmitBtn');
+    btn.textContent = 'Submitting…'; btn.disabled = true;
+    fetch('/student/submit_feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sitin_log_id: _fbSitinLogId, message: message, lab: _fbLab })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('✓ Feedback submitted!', 'success');
+            document.getElementById('feedbackModal').style.display = 'none';
+            _hAllData.forEach(function(r) { if (r.id === _fbSitinLogId) r.has_feedback = 1; });
+            _hFiltered.forEach(function(r) { if (r.id === _fbSitinLogId) r.has_feedback = 1; });
+            hRenderTable();
+        } else { showToast(data.message, 'error'); }
+    })
+    .catch(function() { showToast('Something went wrong.', 'error'); })
+    .finally(function() { btn.textContent = 'Submit Feedback'; btn.disabled = false; });
+}
+
+    /* ══ EDIT PROFILE MODAL ══ */
+    var epModal = document.getElementById('editProfileModal');
+    document.getElementById('editProfileBtn').onclick = function(e) { e.preventDefault(); epModal.style.display = 'block'; };
+    document.getElementById('closeEditModal').onclick  = function() { epModal.style.display = 'none'; };
+    document.getElementById('profilePicInput').onchange = function() {
+        var file = this.files[0]; if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('avatarPreview').innerHTML =
+                '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"><div class="overlay">📷</div>';
+        };
+        reader.readAsDataURL(file);
+    };
+    document.getElementById('editProfileForm').onsubmit = function(e) {
+        e.preventDefault();
+        var password = document.getElementById('ep_password').value;
+        var confirm  = document.getElementById('ep_confirmPassword').value;
+        if (password && password !== confirm) { showToast('Passwords do not match!', 'error'); return; }
+        if (password && password.length < 6)  { showToast('Password must be at least 6 characters.', 'error'); return; }
+        if (password && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+            showToast('Password must include a special character.', 'error'); return;
+        }
+        var formData = new FormData(this);
+        var picInput = document.getElementById('profilePicInput');
+        if (picInput.files[0]) formData.append('profilePic', picInput.files[0]);
+        fetch('/edit_profile', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    epModal.style.display = 'none';
+                    showToast('✓ ' + data.message, 'success');
+                    setTimeout(function() { location.reload(); }, 1800);
+                } else { showToast(data.message, 'error'); }
+            })
+            .catch(function() { showToast('Something went wrong.', 'error'); });
+    };
+
+
+    /* ══════════════════════════════════════════════
+       RESERVATION WIZARD — 5 STEPS
+       1. Choose Date
+       2. Choose Lab  (filtered by date + maintenance + reservations)
+       3. Time Slot   (filtered by maintenance + reservations)
+       4. Choose PC   (shows maintenance + reserved status)
+       5. Confirm
+    ══════════════════════════════════════════════ */
+    var _rsvState = { currentStep: 1, date: null, lab: null, slot: null, pcNumber: null };
+
+    /* ── Open / Close ── */
+    document.getElementById('reservationBtn').onclick = function(e) { e.preventDefault(); openReservationModal(); };
+    document.getElementById('rsvCloseBtn').onclick    = function() { document.getElementById('reservationModal').style.display = 'none'; };
+
+    function openReservationModal() {
+        document.getElementById('reservationModal').style.display = 'block';
+        rsvReset();
+        rsvLoadMyReservations();
+    }
+
+    /* ── Reset ── */
+    function rsvReset() {
+        _rsvState = { currentStep: 1, date: null, lab: null, slot: null, pcNumber: null };
+
+        // Step 1
+        document.getElementById('rsvDateInput').value    = '';
+        document.getElementById('rsvDateDisplay').textContent = 'No date selected';
+        document.getElementById('rsvDateDisplay').style.color = '#94a3b8';
+        document.getElementById('rsvNext1').disabled = true;
+
+        // Step 2
+        document.getElementById('rsvLabLoading').style.display  = 'none';
+        document.getElementById('rsvLabGridWrap').style.display = 'none';
+        document.getElementById('rsvSearchLabsBtn').disabled    = false;
+        document.getElementById('rsvSearchLabsBtn').innerHTML   = '<span class="btn-icon">🔍</span> Search Available Labs';
+        document.getElementById('rsvNext2').disabled = true;
+
+        // Step 3
+        document.getElementById('rsvSlotsLoading').style.display = 'none';
+        document.getElementById('rsvSlotsResult').style.display  = 'none';
+        document.getElementById('rsvNoSlots').style.display      = 'none';
+        document.getElementById('rsvNext3').disabled = true;
+
+        // Step 4
+        document.getElementById('rsvPcContainer').innerHTML =
+            '<div class="rsv-loading" style="grid-column:1/-1;"><div class="rsv-spinner"></div><div>Loading PCs…</div></div>';
+        document.getElementById('rsvPcSelectedInfo').style.display = 'none';
+        document.getElementById('rsvNext4').disabled = true;
+
+        // Date limits
+        var today = new Date();
+        var yyyy  = today.getFullYear();
+        var mm    = String(today.getMonth()+1).padStart(2,'0');
+        var dd    = String(today.getDate()).padStart(2,'0');
+        document.getElementById('rsvDateInput').min = yyyy+'-'+mm+'-'+dd;
+        document.getElementById('rsvDateInput').max = yyyy+'-12-31';
+
+        rsvGoTo(1, true);
+    }
+
+    /* ── Step Navigation ── */
+    function rsvGoTo(step, skipAnimate) {
+        for (var i = 1; i <= 5; i++) {
+            var panel  = document.getElementById('rsvPanel'   + i);
+            var sEl    = document.getElementById('rsvStep'    + i);
+            var numEl  = document.getElementById('rsvStepNum' + i);
+            panel.classList.remove('active');
+            sEl.classList.remove('active', 'done');
+            if (i < step) {
+                sEl.classList.add('done');
+                numEl.textContent = '✓';
+            } else if (i === step) {
+                sEl.classList.add('active');
+                numEl.textContent = i;
+                if (!skipAnimate) panel.style.animation = 'none';
+                panel.classList.add('active');
+                if (!skipAnimate) setTimeout(function() { panel.style.animation = ''; }, 10);
+            } else {
+                numEl.textContent = i;
+            }
+        }
+        _rsvState.currentStep = step;
+        if (step === 3) rsvLoadSlots();
+        if (step === 4) rsvLoadPCs();
+        if (step === 5) rsvFillSummary();
+        document.getElementById('reservationModal').scrollTop = 0;
+    }
+
+    /* ══ STEP 1: DATE ══ */
+    document.getElementById('rsvDateInput').addEventListener('change', function() {
+        var val = this.value;
+        _rsvState.date     = val || null;
+        _rsvState.lab      = null;
+        _rsvState.slot     = null;
+        _rsvState.pcNumber = null;
+
+        // Reset downstream
+        document.getElementById('rsvNext2').disabled = true;
+        document.getElementById('rsvNext3').disabled = true;
+        document.getElementById('rsvNext4').disabled = true;
+        document.getElementById('rsvLabLoading').style.display  = 'none';
+        document.getElementById('rsvLabGridWrap').style.display = 'none';
+        document.getElementById('rsvSearchLabsBtn').disabled    = false;
+        document.getElementById('rsvSearchLabsBtn').innerHTML   = '<span class="btn-icon">🔍</span> Search Available Labs';
+
+        if (val) {
+            var parts  = val.split('-');
+            var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            var disp   = months[parseInt(parts[1])-1] + ' ' + parseInt(parts[2]) + ', ' + parts[0];
+            document.getElementById('rsvDateDisplay').textContent = '📅 ' + disp;
+            document.getElementById('rsvDateDisplay').style.color = '#667eea';
+            document.getElementById('rsvNext1').disabled = false;
+        } else {
+            document.getElementById('rsvDateDisplay').textContent = 'No date selected';
+            document.getElementById('rsvDateDisplay').style.color = '#94a3b8';
+            document.getElementById('rsvNext1').disabled = true;
+        }
+    });
+
+    /* ══ STEP 2: SEARCH LABS ══ */
+    function rsvSearchLabs() {
+        if (!_rsvState.date) return;
+
+        var btn      = document.getElementById('rsvSearchLabsBtn');
+        var loading  = document.getElementById('rsvLabLoading');
+        var gridWrap = document.getElementById('rsvLabGridWrap');
+
+        gridWrap.style.display = 'none';
+        loading.style.display  = 'block';
+        btn.disabled   = true;
+        btn.innerHTML  = '<span class="btn-icon">⏳</span> Searching…';
+        document.getElementById('rsvNext2').disabled = true;
+        _rsvState.lab = null;
+
+        var msgs = [
+            { msg: 'Scanning available labs…',     sub: 'Checking for ' + _rsvState.date },
+            { msg: 'Checking PC availability…',    sub: 'Filtering maintenance PCs' },
+            { msg: 'Verifying reservations…',      sub: 'Checking existing bookings' },
+            { msg: 'Finalizing results…',          sub: 'Almost ready!' }
+        ];
+        var msgIdx   = 0, progress = 0;
+        var progEl   = document.getElementById('rsvLabProgressBar');
+        var msgEl    = document.getElementById('rsvLabLoadingMsg');
+        var subEl    = document.getElementById('rsvLabLoadingSub');
+
+        var msgTimer = setInterval(function() {
+            msgIdx = Math.min(msgIdx+1, msgs.length-1);
+            msgEl.style.opacity = '0';
+            setTimeout(function() {
+                msgEl.textContent = msgs[msgIdx].msg;
+                subEl.textContent = msgs[msgIdx].sub;
+                msgEl.style.opacity = '1';
+            }, 150);
+        }, 1000);
+
+        var progTimer = setInterval(function() {
+            progress += 2; if (progress > 90) progress = 90;
+            progEl.style.width = progress + '%';
+        }, 80);
+
+        var fetchDone = false, timerDone = false, fetchResult = null, fetchError = false;
+
+        function tryFinish() {
+            if (!fetchDone || !timerDone) return;
+            clearInterval(msgTimer); clearInterval(progTimer);
+            progEl.style.width = '100%';
+
+            setTimeout(function() {
+                loading.style.display = 'none';
+
+                if (fetchError) {
+                    gridWrap.style.display = 'block';
+                    document.getElementById('rsvLabGrid').innerHTML =
+                        '<div style="grid-column:1/-1;text-align:center;padding:24px;color:#f5576c;font-size:13px;">Failed to load labs. Please try again.</div>';
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="btn-icon">🔄</span> Search Again';
+                    return;
+                }
+
+                var labs = fetchResult;
+                var grid = document.getElementById('rsvLabGrid');
+
+                if (!labs.length) {
+                    grid.innerHTML =
+                        '<div style="grid-column:1/-1;text-align:center;padding:40px 24px;color:#94a3b8;">'
+                        + '<div style="font-size:2.5rem;opacity:0.2;margin-bottom:12px;">🔧</div>'
+                        + '<strong style="font-size:14px;color:#0f172a;">No labs available</strong>'
+                        + '<p style="font-size:13px;margin-top:6px;line-height:1.6;">All labs are fully booked or under maintenance<br>for <strong>' + _rsvState.date + '</strong>.<br>Try a different date.</p>'
+                        + '</div>';
+                } else {
+                    grid.innerHTML = labs.map(function(lab) {
+                        return '<div class="rsv-lab-card" data-lab="' + lab + '" onclick="rsvSelectLab(\'' + lab + '\')">'
+                            + '<div class="rsv-lab-icon">🖥️</div>'
+                            + '<div class="rsv-lab-name">Lab ' + lab + '</div>'
+                            + '<div class="rsv-lab-sub">40 PCs</div>'
+                            + '<div class="rsv-lab-avail-badge"><div class="rsv-lab-avail-dot"></div> Available</div>'
+                            + '</div>';
+                    }).join('');
+                }
+
+                gridWrap.style.display = 'block';
+                btn.disabled  = false;
+                btn.innerHTML = '<span class="btn-icon">🔄</span> Search Again';
+            }, 300);
+        }
+
+        setTimeout(function() { timerDone = true; tryFinish(); }, 4000);
+
+        fetch('/student/available_labs?date=' + _rsvState.date)
+            .then(function(r) { return r.json(); })
+            .then(function(data) { fetchResult = data; fetchDone = true; tryFinish(); })
+            .catch(function() { fetchError = true; fetchDone = true; tryFinish(); });
+    }
+
+    function rsvSelectLab(lab) {
+        _rsvState.lab      = lab;
+        _rsvState.slot     = null;
+        _rsvState.pcNumber = null;
+        document.querySelectorAll('.rsv-lab-card').forEach(function(c) {
+            c.classList.toggle('selected', c.getAttribute('data-lab') === lab);
+        });
+        document.getElementById('rsvNext2').disabled = false;
+    }
+
+    /* ══ STEP 3: TIME SLOTS ══ */
+    function rsvLoadSlots() {
+        if (!_rsvState.lab || !_rsvState.date) return;
+
+        _rsvState.slot = null;
+        document.getElementById('rsvNext3').disabled = true;
+        document.getElementById('rsvSlotsResult').style.display  = 'none';
+        document.getElementById('rsvNoSlots').style.display      = 'none';
+        document.getElementById('rsvSlotsLoading').style.display = 'block';
+
+        document.getElementById('rsvSlotLabDisplay').textContent  = _rsvState.lab;
+        document.getElementById('rsvSlotDateDisplay').textContent = _rsvState.date;
+        document.getElementById('rsvSlotLoadingLab').textContent  = _rsvState.lab;
+
+        var slotMsgs  = ['Scanning time slots…','Checking reservations…','Verifying PC counts…','Almost ready…'];
+        var sIdx = 0, slotProg = 0;
+        var slotMsgEl  = document.getElementById('rsvSlotLoadingMsg');
+        var slotProgEl = document.getElementById('rsvSlotProgressBar');
+
+        var slotMsgTimer = setInterval(function() {
+            sIdx = Math.min(sIdx+1, slotMsgs.length-1);
+            slotMsgEl.style.opacity = '0';
+            setTimeout(function() { slotMsgEl.textContent = slotMsgs[sIdx]; slotMsgEl.style.opacity = '1'; }, 150);
+        }, 750);
+
+        var slotProgTimer = setInterval(function() {
+            slotProg += 3; if (slotProg > 90) slotProg = 90;
+            slotProgEl.style.width = slotProg + '%';
+        }, 90);
+
+        var fetchDone = false, timerDone = false, fetchResult = null, fetchError = false;
+
+        function tryFinish() {
+            if (!fetchDone || !timerDone) return;
+            clearInterval(slotMsgTimer); clearInterval(slotProgTimer);
+            slotProgEl.style.width = '100%';
+
+            setTimeout(function() {
+                document.getElementById('rsvSlotsLoading').style.display = 'none';
+
+                if (fetchError || !fetchResult) {
+                    document.getElementById('rsvSlotsResult').style.display = 'block';
+                    document.getElementById('rsvSlotGrid').innerHTML =
+                        '<div style="grid-column:1/-1;text-align:center;padding:24px;color:#f5576c;font-size:13px;">Failed to load slots. Please try again.</div>';
+                    return;
+                }
+
+                if (!fetchResult.length) {
+                    document.getElementById('rsvNoSlots').style.display = 'block';
+                    return;
+                }
+
+                var grid = document.getElementById('rsvSlotGrid');
+                grid.innerHTML = fetchResult.map(function(s, idx) {
+                    var cls  = 'rsv-slot-card' + (s.full ? ' rsv-slot-full' : '');
+                    var info = s.full
+                        ? '<div class="rsv-slot-full-label" style="display:flex;align-items:center;gap:4px;justify-content:center;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f5576c;"></span> Full</div>'
+                        : '<div class="rsv-slot-avail" style="display:flex;align-items:center;gap:4px;justify-content:center;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#11998e;"></span> ' + s.available + ' PCs free</div>';
+                    return '<div class="' + cls + '" data-slot="' + s.slot + '" style="animation-delay:' + (idx*0.08) + 's;" '
+                        + (s.full ? '' : 'onclick="rsvSelectSlot(\'' + s.slot.replace(/'/g,"\\'") + '\')"') + '>'
+                        + '<div class="rsv-slot-time" style="font-size:14px;">⏱ ' + s.slot + '</div>'
+                        + '<div style="font-size:11px;color:#94a3b8;font-weight:600;margin:4px 0;">2-hour session</div>'
+                        + info + '</div>';
+                }).join('');
+                document.getElementById('rsvSlotsResult').style.display = 'block';
+            }, 200);
+        }
+
+        setTimeout(function() { timerDone = true; tryFinish(); }, 2000);
+
+        fetch('/student/available_slots?lab=' + _rsvState.lab + '&date=' + _rsvState.date)
+            .then(function(r) { return r.json(); })
+            .then(function(data) { fetchResult = data; fetchDone = true; tryFinish(); })
+            .catch(function() { fetchError = true; fetchDone = true; tryFinish(); });
+    }
+
+    function rsvSelectSlot(slot) {
+        _rsvState.slot     = slot;
+        _rsvState.pcNumber = null;
+        document.querySelectorAll('.rsv-slot-card').forEach(function(c) {
+            c.classList.toggle('selected', c.getAttribute('data-slot') === slot);
+        });
+        document.getElementById('rsvNext3').disabled = false;
+    }
+
+    /* ══ STEP 4: PC MAP ══ */
+    function rsvLoadPCs() {
+        if (!_rsvState.lab || !_rsvState.date || !_rsvState.slot) return;
+
+        _rsvState.pcNumber = null;
+        document.getElementById('rsvNext4').disabled = true;
+        document.getElementById('rsvPcSelectedInfo').style.display = 'none';
+
+        document.getElementById('rsvPcLabDisplay').textContent  = _rsvState.lab;
+        document.getElementById('rsvPcDateDisplay').textContent = _rsvState.date;
+        document.getElementById('rsvPcSlotDisplay').textContent = _rsvState.slot;
+
+        var container = document.getElementById('rsvPcContainer');
+        container.innerHTML = '<div class="rsv-loading" style="grid-column:1/-1;"><div class="rsv-spinner"></div><div style="font-size:13px;margin-top:8px;">Loading PC map…</div></div>';
+
+        fetch('/student/pc_status?lab=' + _rsvState.lab + '&date=' + _rsvState.date + '&timeslot=' + encodeURIComponent(_rsvState.slot))
+            .then(function(r) { return r.json(); })
+            .then(function(pcs) {
+                container.innerHTML = pcs.map(function(p) {
+                    var icon  = p.status === 'maintenance' ? '🔧' : p.status === 'reserved' ? '🔒' : '💻';
+                    var label = p.status === 'maintenance' ? 'MAINT' : p.status === 'reserved' ? 'IN USE' : 'FREE';
+                    var click = p.status === 'available' ? 'onclick="rsvSelectPc(' + p.pc + ')"' : '';
+                    var title = p.status === 'maintenance' ? ' title="' + p.reason + '"' : '';
+                    return '<div class="rsv-pc ' + p.status + '" ' + click + title + '>'
+                        + '<div class="rsv-pc-icon">' + icon + '</div>'
+                        + '<div class="rsv-pc-num">' + p.pc + '</div>'
+                        + '<div class="rsv-pc-label">' + label + '</div>'
+                        + '</div>';
+                }).join('');
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="rsv-loading" style="grid-column:1/-1;color:#f5576c;">Failed to load PC map.</div>';
+            });
+    }
+
+    function rsvSelectPc(pcNum) {
+        _rsvState.pcNumber = pcNum;
+        document.querySelectorAll('.rsv-pc').forEach(function(el) { el.classList.remove('selected-pc'); });
+        document.querySelectorAll('.rsv-pc').forEach(function(el) {
+            var numEl = el.querySelector('.rsv-pc-num');
+            if (numEl && parseInt(numEl.textContent) === pcNum && el.classList.contains('available'))
+                el.classList.add('selected-pc');
+        });
+        document.getElementById('rsvSelectedPcNum').textContent = pcNum;
+        document.getElementById('rsvPcSelectedInfo').style.display = 'block';
+        document.getElementById('rsvNext4').disabled = false;
+    }
+
+    /* ══ STEP 5: SUMMARY ══ */
+    function rsvFillSummary() {
+        document.getElementById('sumDate').textContent = _rsvState.date;
+        document.getElementById('sumLab').textContent  = 'Lab ' + _rsvState.lab;
+        document.getElementById('sumSlot').textContent = _rsvState.slot;
+        document.getElementById('sumPc').textContent   = 'PC #' + _rsvState.pcNumber;
+    }
+
+    /* ══ SUBMIT ══ */
+    function rsvSubmit() {
+        var btn = document.getElementById('rsvConfirmBtn');
+        btn.textContent = 'Booking…'; btn.disabled = true;
+        fetch('/student/reserve', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lab: _rsvState.lab, date: _rsvState.date, timeslot: _rsvState.slot, pcNumber: _rsvState.pcNumber })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showToast('✓ ' + data.message, 'success');
+                document.getElementById('reservationModal').style.display = 'none';
+            } else { showToast(data.message, 'error'); }
+        })
+        .catch(function() { showToast('Something went wrong.', 'error'); })
+        .finally(function() { btn.textContent = '✓ Confirm Reservation'; btn.disabled = false; });
+    }
+
+    /* ══ MY RESERVATIONS ══ */
+    function rsvLoadMyReservations() {
+        var list = document.getElementById('rsvMyList');
+        list.innerHTML = '<div class="rsv-loading"><div class="rsv-spinner"></div></div>';
+        fetch('/student/my_reservations')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.length) {
+                    list.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;">No reservations yet.</div>';
+                    return;
+                }
+                list.innerHTML = data.slice(0,5).map(function(r) {
+                    var statusCls = 'rsv-status-' + r.status;
+                    var canCancel = r.status === 'pending' || r.status === 'approved';
+                    return '<div class="rsv-my-item">'
+                        + '<div class="rsv-my-info">'
+                        + '<div class="rsv-my-name">Lab ' + r.lab + ' — PC #' + r.pcNumber + '</div>'
+                        + '<div class="rsv-my-sub">' + r.date + ' &nbsp;|&nbsp; ' + r.timeSlot + '</div>'
+                        + '</div>'
+                        + '<span class="rsv-status-badge ' + statusCls + '">' + r.status.charAt(0).toUpperCase() + r.status.slice(1) + '</span>'
+                        + (canCancel ? '<button class="rsv-cancel-btn" onclick="rsvCancelReservation(' + r.id + ')">Cancel</button>' : '')
+                        + '</div>';
+                }).join('');
+                if (data.length > 5) {
+                    list.innerHTML += '<div style="text-align:center;font-size:12px;color:#94a3b8;padding:8px;">+' + (data.length-5) + ' more reservations</div>';
+                }
+            })
+            .catch(function() {
+                list.innerHTML = '<div style="text-align:center;padding:16px;color:#f5576c;font-size:13px;">Failed to load.</div>';
+            });
+    }
+
+    function rsvCancelReservation(id) {
+        if (!confirm('Cancel this reservation?')) return;
+        fetch('/student/cancel_reservation', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { showToast('✓ Reservation cancelled.', 'success'); rsvLoadMyReservations(); }
+            else { showToast(data.message, 'error'); }
+        })
+        .catch(function() { showToast('Something went wrong.', 'error'); });
+    }
+
+    /* ══ NOTIFICATION SYSTEM ══ */
+var _notifData = [];
+ 
+// Call this on page load and periodically to update the badge
+function refreshNotifBadge() {
+    fetch('/student/notifications/unread_count')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            var badge = document.getElementById('notifBadge');
+            if (!badge) return;
+            if (data.count > 0) {
+                badge.style.display  = 'inline';
+                badge.textContent    = data.count > 99 ? '99+' : data.count;
+            } else {
+                badge.style.display = 'none';
+            }
+        })
+        .catch(function(){});
+}
+ 
+function openNotifications() {
+    document.getElementById('notificationModal').style.display = 'block';
+    loadNotifications();
+}
+ 
+function loadNotifications() {
+    var list = document.getElementById('notifList');
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;"><div style="font-size:2rem;opacity:.2;margin-bottom:12px;">🔔</div>Loading…</div>';
+ 
+    fetch('/student/notifications')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            _notifData = data;
+            renderNotifications(data);
+        })
+        .catch(function() {
+            list.innerHTML = '<div style="text-align:center;padding:32px;color:#f5576c;font-size:13px;">Failed to load notifications.</div>';
+        });
+}
+ 
+function renderNotifications(data) {
+    var list    = document.getElementById('notifList');
+    var subEl   = document.getElementById('notifModalSub');
+    var unread  = data.filter(function(n){ return !n.isRead; }).length;
+    subEl.textContent = unread > 0 ? unread + ' unread notification' + (unread > 1 ? 's' : '') : 'All caught up!';
+ 
+    if (!data.length) {
+        list.innerHTML = '<div style="text-align:center;padding:52px 24px;color:#94a3b8;">'
+            + '<div style="font-size:2.5rem;opacity:.18;margin-bottom:14px;">🔔</div>'
+            + '<strong style="font-size:14px;color:#0f172a;">No notifications yet</strong>'
+            + '<p style="font-size:13px;margin-top:6px;line-height:1.6;">Updates about your reservations and announcements will appear here.</p>'
+            + '</div>';
+        return;
+    }
+ 
+    list.innerHTML = data.map(function(n) {
+        var iconMap = {
+            'success':      '✅',
+            'error':        '❌',
+            'warning':      '⚠️',
+            'reservation':  '📅',
+            'announcement': '📢',
+            'info':         '🔔'
+        };
+        var colorMap = {
+            'success':      { bg: 'rgba(17,153,142,0.08)',  border: 'rgba(17,153,142,0.2)',  dot: '#11998e' },
+            'error':        { bg: 'rgba(245,87,108,0.08)', border: 'rgba(245,87,108,0.2)', dot: '#f5576c' },
+            'warning':      { bg: 'rgba(247,151,30,0.08)',  border: 'rgba(247,151,30,0.2)',  dot: '#f7971e' },
+            'reservation':  { bg: 'rgba(102,126,234,0.08)', border: 'rgba(102,126,234,0.2)', dot: '#667eea' },
+            'announcement': { bg: 'rgba(118,75,162,0.08)',  border: 'rgba(118,75,162,0.2)',  dot: '#764ba2' },
+            'info':         { bg: 'rgba(102,126,234,0.06)', border: '#e2e8f0',               dot: '#94a3b8' }
+        };
+ 
+        var type   = n.type || 'info';
+        var icon   = iconMap[type]  || '🔔';
+        var color  = colorMap[type] || colorMap['info'];
+        var unread = !n.isRead;
+ 
+        return '<div onclick="markNotifRead(' + n.id + ',this)" style="'
+            + 'display:flex;align-items:flex-start;gap:12px;padding:14px 16px;'
+            + 'border:1.5px solid ' + color.border + ';border-radius:14px;'
+            + 'background:' + (unread ? color.bg : 'white') + ';'
+            + 'cursor:pointer;transition:all .2s;position:relative;'
+            + '" onmouseover="this.style.borderColor=\'#667eea\'" onmouseout="this.style.borderColor=\'' + color.border + '\'">'
+ 
+            // Icon
+            + '<div style="font-size:1.4rem;flex-shrink:0;margin-top:1px;">' + icon + '</div>'
+ 
+            // Content
+            + '<div style="flex:1;min-width:0;">'
+            +   '<div style="font-size:13px;font-weight:' + (unread ? '700' : '600') + ';color:#0f172a;margin-bottom:3px;">' + escHtml(n.title) + '</div>'
+            +   '<div style="font-size:12px;color:#334155;line-height:1.6;font-weight:' + (unread ? '600' : '400') + ';">' + escHtml(n.message) + '</div>'
+            +   '<div style="font-size:11px;color:#94a3b8;margin-top:5px;font-weight:500;">' + n.createdAt + '</div>'
+            + '</div>'
+ 
+            // Unread dot
+            + (unread ? '<div style="width:9px;height:9px;border-radius:50%;background:' + color.dot + ';flex-shrink:0;margin-top:4px;"></div>' : '')
+            + '</div>';
+    }).join('');
+ 
+    // Update badge
+    refreshNotifBadge();
+}
+ 
+function markNotifRead(id, el) {
+    fetch('/student/notifications/mark_read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Update the item in _notifData
+            _notifData.forEach(function(n) { if (n.id === id) n.isRead = 1; });
+            renderNotifications(_notifData);
+        }
+    })
+    .catch(function(){});
+}
+ 
+var FOUL_WORDS_CLIENT = [
+    // ── ENGLISH ──
+    "fuck","f*ck","f**k","fu*k","fuk","fuq","fvck","phuck",
+    "fucks","fucking","fucked","fucker","fuckers","fuckhead",
+    "fuckface","fuckoff","fuckup","motherfucker","motherfucking",
+    "shit","sh*t","sh!t","sht","shyt","shite","shits","shitting",
+    "shithead","shitheads","shitface","bullshit","dipshit","apeshit",
+    "bitch","b*tch","b!tch","btch","biatch","biotch","bitches",
+    "bitching","bitchy","sonofabitch",
+    "ass","a**","a55","arse","asshole","a**hole","assh*le",
+    "assholes","jackass","smartass","dumbass","fatass",
+    "assface","asswipe","assclown","bastard","b*stard","bastards",
+    "cunt","c*nt","c**t","cunts","cunting",
+    "dick","d*ck","dck","dicks","dickhead","dickface","d1ck",
+    "pussy","p*ssy","pussies",
+    "cock","c*ck","cocks","cocksucker","c0ck",
+    "whore","wh*re","whores","slut","sl*t","sluts","slvt",
+    "retard","r*tard","retarded","faggot","f*ggot","fag","fags",
+    "nigger","n*gger","nigga","n1gga","n1gger",
+    "idiot","stupid","stup1d","moron","imbecile","dumbass",
+    "loser","l0ser","scum","scumbag","prick","pr*ck",
+    "twat","tw*t","wanker","w*nker",
+    "hell","damn","damned","dammit","d*mn",
+    "crap","crappy","piss","p*ss","pissed","pissoff",
+    "douchebag","douche","turd","bollocks","bugger",
+    "tosser","slag","skank","skanky","tramp",
+    "ho","hoe","pimp","spaz","numbnuts",
+    "shitass","asshat","clusterfuck","goddamn","goddammit",
+    "son of a bitch","wtf","stfu","gtfo","kys",
+    // ── BISAYA / CEBUANO ──
+    "puta","p*ta","p.u.t.a","putang","putangina","putang ina",
+    "putahing","putahinamo","puta ka",
+    "yawa","y*wa","yawa ka","yawaa","yawa mo","yawaon",
+    "boang","b*ang","boanga","boang ka","boangon",
+    "buang","bu*ng","buanga","buang ka","buangon",
+    "bilat","b*lat","bilatmo","bilat mo",
+    "boto","b*to","botong","boto mo",
+    "unggoy","ungoy","unggoy ka",
+    "bogo","b*go","bogoa","bogo ka",
+    "animal","an1mal","animal ka","mananap",
+    "gago","g*go","gagong","gago ka","gaga",
+    "leche","l*che","letche","letcheng",
+    "punyeta","p*nyeta","punyetang","punyeta ka",
+    "tangina","t*ngina","tang ina","tang ina mo","tanginamo",
+    "inutil","in*til","inutilmo",
+    "peste","p*ste","pesteng",
+    "kayat","k*yat","kayatmo","kayat mo",
+    "kineme","kin*me","kineme mo",
+    "iyot","iy*t","iyot mo","iyoton",
+    "atay","at*y","atayka","atay mo",
+    "kupal","k*pal","kupalmo","kupal ka",
+    "pakyu","pak*u","pak u","pak you","pakyo",
+    "ulol","ul*l","ulolmo","ulol ka",
+    "tarantado","tar*ntado","tarantadong",
+    "demonyo","dem0nyo","demonyong",
+    "hayop","hay*p","hayopka","hayop ka",
+    "tanga","t*nga","tangamo","tanga ka",
+    "luko","luk*","luko ka",
+    "buwa","buw*","buwa ka",
+    "hinayupak","hinayu*ak","hinayupak ka",
+    "olats","ol*ts","olats ka",
+    "pakshet","pak*het","paksit",
+    "amputa","amp*ta","amputang","amputa ka",
+    "hudas","hud*s","hudas ka",
+    "bwisit","bw*sit","bwisitmo","bwisit ka",
+    "lintian","lint*an","lintianmo",
+    "kadyot","kad*ot","kadyot mo",
+    "burikat","bur*kat","burikat ka",
+    "bastos","bast*s","bastos ka",
+    "walay batasan","walay ulaw",
+    "hungog","hung*g","hungog ka",
+    "giatay","gi atay","gi-atay",
+    "giiyot","gi iyot","gi-iyot",
+    "gibilat","gi bilat","gi-bilat",
+    "yawang","gago","boang","buang"
+];
+
+function clientHasFoul(text) {
+    var original = text.toLowerCase();
+    // Remove spaces around * to catch "f * ck" → "f*ck"
+    var noSpaceStar = original.replace(/\s*\*\s*/g, '*');
+    // Strip ALL non-alphanumeric except * for first pass
+    var withStar = noSpaceStar.replace(/[^a-z0-9\s\*]/g, '');
+    // Strip everything for second pass
+    var cleaned = original.replace(/[^a-z0-9\s]/g, '');
+    // Also replace * with nothing to catch f*ck → fck → we map manually
+    var starRemoved = noSpaceStar.replace(/\*/g, '');
+
+    var toCheck = [original, noSpaceStar, withStar, cleaned, starRemoved];
+
+    for (var k = 0; k < toCheck.length; k++) {
+        var version = toCheck[k];
+        // Check each foul word against this version
+        for (var j = 0; j < FOUL_WORDS_CLIENT.length; j++) {
+            var fw = FOUL_WORDS_CLIENT[j].toLowerCase();
+            if (version.includes(fw)) return true;
+            // Also check word boundary match
+            var words = version.split(/\s+/);
+            for (var i = 0; i < words.length; i++) {
+                if (words[i] === fw) return true;
+            }
+        }
+    }
+    
+
+    // Extra: normalize leet speak and recheck
+    var leet = original
+        .replace(/0/g, 'o')
+        .replace(/1/g, 'i')
+        .replace(/3/g, 'e')
+        .replace(/4/g, 'a')
+        .replace(/5/g, 's')
+        .replace(/\*/g, '')
+        .replace(/[^a-z\s]/g, '');
+
+    for (var j = 0; j < FOUL_WORDS_CLIENT.length; j++) {
+        var fw = FOUL_WORDS_CLIENT[j].toLowerCase().replace(/\*/g, '').replace(/[^a-z\s]/g, '');
+        if (leet.includes(fw)) return true;
+    }
+
+    return false;
+}
+function markAllNotifRead() {
+    fetch('/student/notifications/mark_read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            _notifData.forEach(function(n){ n.isRead = 1; });
+            renderNotifications(_notifData);
+        }
+    })
+    .catch(function(){});
+}
+ 
+function escHtml(str) {
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+ 
+/* ── Wire up notification button ── */
+var _notifBtn = document.getElementById('notifBtn');
+if (_notifBtn) {
+    _notifBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        openNotifications();
+    });
+}
+ 
+/* ── Close on backdrop ── */
+document.getElementById('notificationModal').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+});
+
+ 
+/* ── Auto-refresh badge every 30 seconds ── */
+refreshNotifBadge();
+setInterval(refreshNotifBadge, 30000);
+
+/* ══ SIT-IN SUMMARY ══ */
+function loadSitinSummary() {
+    fetch('/student/sitin_summary')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            document.getElementById('summaryLoading').style.display = 'none';
+
+            if (!d.totalSessions) {
+                document.getElementById('summaryEmpty').style.display = 'block';
+                return;
+            }
+
+            // Fill stats
+            document.getElementById('sumTotalHours').textContent    = d.totalHours + 'h';
+            document.getElementById('sumTotalMins').textContent     = '(' + d.totalMinutes + ' mins total)';
+            document.getElementById('sumTotalSessions').textContent = d.totalSessions;
+            document.getElementById('sumAvgDuration').textContent   = d.avgFormatted;
+            document.getElementById('sumLongest').textContent       = d.longestFormatted;
+
+            document.getElementById('summaryStats').style.display = 'grid';
+
+            // Progress bar
+            var remaining  = parseInt(document.querySelector('.session-count').textContent) || 30;
+            var totalAlloc = remaining + d.totalSessions;
+            var pct        = totalAlloc > 0 ? Math.min(100, Math.round((d.totalSessions / totalAlloc) * 100)) : 0;
+
+            document.getElementById('summaryProgressLabel').textContent = pct + '% used';
+            document.getElementById('summaryProgressUsed').textContent  = d.totalSessions + ' used';
+            document.getElementById('summaryProgressMax').textContent   = totalAlloc + ' total';
+            document.getElementById('summaryProgressWrap').style.display = 'block';
+
+            // Animate bar
+            setTimeout(function() {
+                document.getElementById('summaryProgressBar').style.width = pct + '%';
+                if (pct >= 80) {
+                    document.getElementById('summaryProgressBar').style.background = 'linear-gradient(90deg,#f5576c,#f093fb)';
+                } else if (pct >= 50) {
+                    document.getElementById('summaryProgressBar').style.background = 'linear-gradient(90deg,#f7971e,#ffd200)';
+                }
+            }, 100);
+        })
+        .catch(function() {
+            document.getElementById('summaryLoading').style.display = 'none';
+            document.getElementById('summaryEmpty').style.display   = 'block';
+        });
+}
+
+// Load on page ready
+loadSitinSummary();
+
+/* ══ SESSION TABLE MODAL ══ */
+function openSessionTable() {
+    document.getElementById('sessionTableModal').style.display = 'block';
+    loadSessionTable();
+}
+
+document.getElementById('sessionTableModal').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+});
+
+function calcDuration(timeIn, timeOut) {
+    if (!timeIn || !timeOut) return '—';
+    try {
+        var fmt = function(str) { return new Date(str.replace(' ', 'T').replace(' AM','').replace(' PM','') + ' ' + (str.includes('PM') && !str.includes('12:') ? '+12:00' : '')); };
+        var t1 = new Date(timeIn.replace(/(\d{4}-\d{2}-\d{2}) (\d+:\d+) (AM|PM)/, function(m, d, t, ap) {
+            var parts = t.split(':');
+            var h = parseInt(parts[0]);
+            if (ap === 'PM' && h !== 12) h += 12;
+            if (ap === 'AM' && h === 12) h = 0;
+            return d + 'T' + String(h).padStart(2,'0') + ':' + parts[1] + ':00';
+        }));
+        var t2 = new Date(timeOut.replace(/(\d{4}-\d{2}-\d{2}) (\d+:\d+) (AM|PM)/, function(m, d, t, ap) {
+            var parts = t.split(':');
+            var h = parseInt(parts[0]);
+            if (ap === 'PM' && h !== 12) h += 12;
+            if (ap === 'AM' && h === 12) h = 0;
+            return d + 'T' + String(h).padStart(2,'0') + ':' + parts[1] + ':00';
+        }));
+        var mins = Math.max(0, Math.round((t2 - t1) / 60000));
+        var h = Math.floor(mins / 60), m = mins % 60;
+        return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+    } catch(e) { return '—'; }
+}
+
+function loadSessionTable() {
+    var tbody = document.getElementById('sessionTableBody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">Loading…</td></tr>';
+    document.getElementById('sessionTableEmpty').style.display = 'none';
+
+    fetch('/student/history')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.length) {
+                tbody.innerHTML = '';
+                document.getElementById('sessionTableEmpty').style.display = 'block';
+                return;
+            }
+
+            tbody.innerHTML = data.map(function(r, idx) {
+                var dateStr  = r.timeIn  ? r.timeIn.split(' ')[0]  : '—';
+                var timeIn   = r.timeIn  ? r.timeIn.split(' ').slice(1).join(' ')  : '—';
+                var timeOut  = r.timeOut ? r.timeOut.split(' ').slice(1).join(' ') : '—';
+                var duration = calcDuration(r.timeIn, r.timeOut);
+                var isDone   = !!r.timeOut;
+                var rowBg    = idx % 2 === 0 ? '#ffffff' : '#f8faff';
+
+                var statusBadge = isDone
+                    ? '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(17,153,142,0.1);color:#11998e;">✓ Completed</span>'
+                    : '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(247,151,30,0.1);color:#f7971e;">⏳ Active</span>';
+
+                return '<tr style="background:' + rowBg + ';" onmouseover="this.style.background=\'#eef2ff\'" onmouseout="this.style.background=\'' + rowBg + '\'">'
+                    + '<td style="padding:12px 14px;color:#94a3b8;font-size:12px;font-weight:600;">' + (idx + 1) + '</td>'
+                    + '<td style="padding:12px 14px;font-size:12px;font-weight:600;color:#334155;">' + dateStr + '</td>'
+                    + '<td style="padding:12px 14px;font-size:12px;color:#334155;">' + timeIn + '</td>'
+                    + '<td style="padding:12px 14px;font-size:12px;color:#334155;">' + timeOut + '</td>'
+                    + '<td style="padding:12px 14px;"><span style="font-size:12px;font-weight:700;color:#667eea;">⏱ ' + duration + '</span></td>'
+                    + '<td style="padding:12px 14px;"><span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(17,153,142,0.1);color:#11998e;">Lab ' + (r.lab||'—') + '</span></td>'
+                    + '<td style="padding:12px 14px;"><span style="display:inline-flex;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(102,126,234,0.1);color:#667eea;">' + (r.purpose||'—') + '</span></td>'
+                    + '<td style="padding:12px 14px;">' + statusBadge + '</td>'
+                    + '</tr>';
+            }).join('');
+        })
+        .catch(function() {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#f5576c;">Failed to load sessions.</td></tr>';
+        });
+}
+    </script>
+
+</body>
+</html>
